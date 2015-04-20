@@ -134,6 +134,27 @@ format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri,
 	    size);
 }
 
+
+/*
+ * logging - Make log entries
+ *
+ * Requests:
+ *	Log string to be entered
+ *	Name of log file
+ * 
+ * Effects:
+ *  Create log file if DNE; else open
+ *	Append log string to end of file
+ */
+void
+logging(char *logString, char *fileName)
+{
+	// use csapp function calls
+	FILE *logFile = Fopen(fileName, "ab+"); // able to read/write binary files
+	fprintf(logFile, "%s\n", logString);
+	Fclose(logFile);
+}
+
 /*
  * The last lines of this file configure the behavior of the "Tab" key in
  * emacs.  Emacs has a rudimentary understanding of C syntax and style.  In
