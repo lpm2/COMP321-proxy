@@ -41,6 +41,8 @@ main(int argc, char **argv)
 	struct sockaddr_in clientaddr;
 	char haddrp[INET_ADDRSTRLEN];
 	char host_name[NI_MAXHOST];
+	//char *pathname;
+	//char *url;
 	
 	if (argc != 2) {
         	fprintf(stderr, "usage: %s <port>\n", argv[0]);
@@ -54,6 +56,8 @@ main(int argc, char **argv)
     		
     		clientlen = sizeof(clientaddr);
     		connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+    		//url = Rio_readlineb_w(&connfd, );
+    		//parse_uri(url, 
 
     		/* determine the domain name and IP address of the client */
 		error = getnameinfo((struct sockaddr *)&clientaddr, sizeof(clientaddr), host_name, sizeof(host_name), NULL,0, 0);
