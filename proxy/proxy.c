@@ -12,9 +12,19 @@
 /*
  * Function prototypes
  */
-void	format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
-	    char *uri, int size);
+void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, 
+	char *uri, int size);
+void logging(char *logString, char *fileName);
 int	parse_uri(char *uri, char *target_addr, char *path, int *port);
+
+/* Need to write these files
+open_clientfd_ts - use the thread-safe functions getaddrinfo and getnameinfo.
+Rio_readn_w
+Rio_readlineb_w
+Rio_writen_w
+*/
+
+bool verbose = false;
 
 /* 
  * main - Main routine for the proxy program 
@@ -32,6 +42,29 @@ main(int argc, char **argv)
 	/* Return success. */
 	return (0);
 }
+
+
+/*
+ * logging - Make log entries
+ *
+ * Requests:
+ *	Log string to be entered
+ *	Name of log file
+ * 
+ * Effects:
+ *  Create log file if DNE; else open
+ *	Append log string to end of file
+ */
+void
+logging(char *logString, char *fileName)
+{
+	// use csapp function calls
+	FILE *logFile = Fopen(fileName, "ab+"); // able to read/write binary files
+	fprintf(logFile, "%s\n", logString);
+	Fclose(logFile);
+}
+
+/* --- Given Functions --- */
 
 /*
  * parse_uri - URI parser
@@ -132,27 +165,6 @@ format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri,
 	/* Return the formatted log entry string */
 	sprintf(logstring, "%s: %d.%d.%d.%d %s %d", time_str, a, b, c, d, uri,
 	    size);
-}
-
-
-/*
- * logging - Make log entries
- *
- * Requests:
- *	Log string to be entered
- *	Name of log file
- * 
- * Effects:
- *  Create log file if DNE; else open
- *	Append log string to end of file
- */
-void
-logging(char *logString, char *fileName)
-{
-	// use csapp function calls
-	FILE *logFile = Fopen(fileName, "ab+"); // able to read/write binary files
-	fprintf(logFile, "%s\n", logString);
-	Fclose(logFile);
 }
 
 /*
