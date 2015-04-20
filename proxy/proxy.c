@@ -27,8 +27,9 @@ void logging(char *logString, char *fileName);
  * Rio_readlineb_w
  * Rio_writen_w
  */
-
-bool verbose = false;
+#define SIZEOF_GET 3
+#define SIZEOF_VERSION 8
+bool verbose = true;
 static char GET[3] = "GET";
 
 /* 
@@ -45,11 +46,12 @@ main(int argc, char **argv)
 	char host_name[MAXLINE];
 	char path_name[MAXLINE];
 	char buf[MAXLINE];
-	char *method = NULL;
-	char *uri = NULL;
-	char *version = NULL;
+	char method[SIZEOF_GET];
+	char uri[MAXLINE];
+	char version[SIZEOF_VERSION];
 	char *request;
-	int listenfd, connfd, port, error;
+	int listenfd, port, error;
+	int conn_to_clientfd;
 	int conn_to_serverfd;
 	int cur_bytes;	//the number of bytes read in from a single read
 	int num_bytes;	//the number of bytes returned in the server response
@@ -67,19 +69,43 @@ main(int argc, char **argv)
     		num_bytes = 0;
     		cur_bytes = 0;
     		clientlen = sizeof(clientaddr);
-    		connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
-    		Rio_readinitb(&client_rio, connfd);
+    		if (verbose)
+    			printf("Waiting for connection\n");
+    		conn_to_clientfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+    		if (verbose)
+    			printf("Connection made\n");
+    		Rio_readinitb(&client_rio, conn_to_clientfd);
+    		if (verbose)
+    			printf("Initialized rio stream\n");
     		Rio_readlineb_w(&client_rio, buf, MAXLINE);
+    		if (verbose) {
+    			printf("Read in request line\n");
+    			printf("Buf: %s\n", buf);
+    		}
     		sscanf(buf, "%s %s %s", method, uri, version);
+    		if (verbose) {
+    			printf("Parsed request line\n");
+    			printf("Method: %s\nURI: %s\nVersion: %s\n", method, 
+    			    uri, version);
+    			printf("method: %s GET: %s\n", method, GET);
+    			printf("Is get? %d", strcmp(method, GET));
+    		}
     		
     		//Check whether a GET request was sent
     		// [TODO] may need to use strcasecmp
-    		if (strcmp(method, GET) == 0) {
+    		if (strcasecmp(method, GET) == 0) {
+    			
+    			if (verbose)
+    				printf("GET request received\n");
     			
     			if (parse_uri(uri, host_name, path_name, &port) == -1) {
-    				Close(connfd);
+    				printf("Error parsing URI!\n");
+    				Close(conn_to_clientfd);
     				continue;
     			}
+    			
+    			if (verbose)
+    				printf("hostname: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
     			
     			
     			/* determine the domain name and IP address of the 
@@ -92,7 +118,7 @@ main(int argc, char **argv)
 			if (error != 0) {
 				fprintf(stderr, "ERROR: %s\n",
 				    gai_strerror(error));
-				Close(connfd);
+				Close(conn_to_clientfd);
 				continue;
 			}
 			inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, 
@@ -100,8 +126,9 @@ main(int argc, char **argv)
 			printf("server connected to %s (%s)\n", host_name,
 			    haddrp);
 			
-    			
-    			request = strcat(method, path_name);
+    			request = strcat(method, " ");
+    			request = strcat(request, path_name);
+    			request = strcat(request, " ");
     			request = strcat(request, version);
     			
     			//open connection to server
@@ -110,33 +137,35 @@ main(int argc, char **argv)
     			conn_to_serverfd = Open_clientfd(host_name, port);
     			Rio_readinitb(&server_rio, conn_to_serverfd);
     			Rio_writen_w(conn_to_serverfd, request, MAXLINE);
-    			
+    			if (verbose)
+    				printf("Wrote request to server: %s\n", request);
     			while (Rio_readlineb_w(&client_rio, buf, MAXLINE)
-    			    != 0)
-    				Rio_writen_w(conn_to_serverfd, buf, MAXLINE);	
+    			    > 0) {
+    			    	if (verbose)
+    			    		printf("Writing request header to server: %s\n", buf);
+    				Rio_writen_w(conn_to_serverfd, buf, MAXLINE);
+    			}
     			
     			
-    			
+    			if (verbose)
+    				printf("Preparing to read reply to client\n");
 			//receive reply and forward it to browser
 			//while(read != 0) increment num_bytes during this
-			
+			while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
+			    MAXLINE)) > 0) {
+    				num_bytes += cur_bytes;
+    				Rio_writen_w(conn_to_clientfd, buf, MAXLINE);
+    			}
+    			if (verbose)
+    				printf("Closing connection to server\n");
+    			Close(conn_to_serverfd);
     		}
-
-    		
-		
-
-    		Close(connfd);
+    		if (verbose)
+    			printf("Closing connection to client\n");
+    		Close(conn_to_clientfd);
     	}
+    	
     	exit(0);
-
-	/* Check the arguments. */
-	/*if (argc != 2) {
-		fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
-		exit(0);
-	}*/
-
-	/* Return success. */
-	//return (0);
 }
 
 /*
