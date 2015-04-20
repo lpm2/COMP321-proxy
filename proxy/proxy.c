@@ -39,14 +39,19 @@ main(int argc, char **argv)
 {
 	socklen_t clientlen;
 	struct sockaddr_in clientaddr;
-	rio_t rio;
+	rio_t client_rio;
+	rio_t server_rio;
 	char haddrp[INET_ADDRSTRLEN];
-	char host_name[NI_MAXHOST];
+	char host_name[MAXLINE];
+	char path_name[MAXLINE];
 	char buf[MAXLINE];
 	char *method = NULL;
 	char *uri = NULL;
 	char *version = NULL;
+	char *request;
 	int listenfd, connfd, port, error;
+	int conn_to_serverfd;
+	int cur_bytes;	//the number of bytes read in from a single read
 	int num_bytes;	//the number of bytes returned in the server response
 	
 	if (argc != 2) {
@@ -60,39 +65,65 @@ main(int argc, char **argv)
 	while (1) {
     		
     		num_bytes = 0;
+    		cur_bytes = 0;
     		clientlen = sizeof(clientaddr);
     		connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
-    		Rio_readinitb(&rio, connfd);
-    		Rio_readlineb_w(&rio, buf, MAXLINE);
+    		Rio_readinitb(&client_rio, connfd);
+    		Rio_readlineb_w(&client_rio, buf, MAXLINE);
     		sscanf(buf, "%s %s %s", method, uri, version);
     		
     		//Check whether a GET request was sent
     		// [TODO] may need to use strcasecmp
     		if (strcmp(method, GET) == 0) {
     			
-    			parse_uri(uri, host_name, haddrp, &port);
+    			if (parse_uri(uri, host_name, path_name, &port) == -1) {
+    				Close(connfd);
+    				continue;
+    			}
+    			
+    			
+    			/* determine the domain name and IP address of the 
+    			 * client
+    			 */
+    			error = getnameinfo((struct sockaddr *)&clientaddr,
+    			    sizeof(clientaddr), host_name, sizeof(host_name), 
+    			    NULL,0, 0);
+	
+			if (error != 0) {
+				fprintf(stderr, "ERROR: %s\n",
+				    gai_strerror(error));
+				Close(connfd);
+				continue;
+			}
+			inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, 
+			    INET_ADDRSTRLEN);
+			printf("server connected to %s (%s)\n", host_name,
+			    haddrp);
+			
+    			
+    			request = strcat(method, path_name);
+    			request = strcat(request, version);
     			
     			//open connection to server
     			//read request into server, making sure
-    			//to use parsed values, not full url
-    			//while(Rio_readlineb_w(&rio, buf, MAXLINE) != 0)
+    			//to use parsed pathname, not full url
+    			conn_to_serverfd = Open_clientfd(host_name, port);
+    			Rio_readinitb(&server_rio, conn_to_serverfd);
+    			Rio_writen_w(conn_to_serverfd, request, MAXLINE);
+    			
+    			while (Rio_readlineb_w(&client_rio, buf, MAXLINE)
+    			    != 0)
+    				Rio_writen_w(conn_to_serverfd, buf, MAXLINE);	
+    			
+    			
     			
 			//receive reply and forward it to browser
 			//while(read != 0) increment num_bytes during this
+			
     		}
+
     		
-		// [TODO] move the code below inside the if, this is how we
-		// extract info to write to log
-    		/* determine the domain name and IP address of the client */
-		error = getnameinfo((struct sockaddr *)&clientaddr, sizeof(clientaddr), host_name, sizeof(host_name), NULL,0, 0);
-	
-		if (error != 0) {
-			fprintf(stderr, "ERROR: %s\n", gai_strerror(error));
-			Close(connfd);
-			continue;
-		}
-		inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, INET_ADDRSTRLEN);
-		printf("server connected to %s (%s)\n", host_name, haddrp);
+		
 
     		Close(connfd);
     	}
