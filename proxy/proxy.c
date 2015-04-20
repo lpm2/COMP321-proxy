@@ -29,6 +29,7 @@ void logging(char *logString, char *fileName);
  */
 
 bool verbose = false;
+static char GET[3] = "GET";
 
 /* 
  * main - Main routine for the proxy program 
@@ -36,13 +37,17 @@ bool verbose = false;
 int
 main(int argc, char **argv)
 {
-	int listenfd, connfd, port, error;
 	socklen_t clientlen;
 	struct sockaddr_in clientaddr;
+	rio_t rio;
 	char haddrp[INET_ADDRSTRLEN];
 	char host_name[NI_MAXHOST];
-	//char *pathname;
-	//char *url;
+	char buf[MAXLINE];
+	char *method = NULL;
+	char *uri = NULL;
+	char *version = NULL;
+	int listenfd, connfd, port, error;
+	int num_bytes;	//the number of bytes returned in the server response
 	
 	if (argc != 2) {
         	fprintf(stderr, "usage: %s <port>\n", argv[0]);
@@ -54,11 +59,30 @@ main(int argc, char **argv)
 	
 	while (1) {
     		
+    		num_bytes = 0;
     		clientlen = sizeof(clientaddr);
     		connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
-    		//url = Rio_readlineb_w(&connfd, );
-    		//parse_uri(url, 
-
+    		Rio_readinitb(&rio, connfd);
+    		Rio_readlineb_w(&rio, buf, MAXLINE);
+    		sscanf(buf, "%s %s %s", method, uri, version);
+    		
+    		//Check whether a GET request was sent
+    		// [TODO] may need to use strcasecmp
+    		if (strcmp(method, GET) == 0) {
+    			
+    			parse_uri(uri, host_name, haddrp, &port);
+    			
+    			//open connection to server
+    			//read request into server, making sure
+    			//to use parsed values, not full url
+    			//while(Rio_readlineb_w(&rio, buf, MAXLINE) != 0)
+    			
+			//receive reply and forward it to browser
+			//while(read != 0) increment num_bytes during this
+    		}
+    		
+		// [TODO] move the code below inside the if, this is how we
+		// extract info to write to log
     		/* determine the domain name and IP address of the client */
 		error = getnameinfo((struct sockaddr *)&clientaddr, sizeof(clientaddr), host_name, sizeof(host_name), NULL,0, 0);
 	
@@ -107,6 +131,9 @@ logging(char *logString, char *fileName)
 /**********************************
  * Wrappers for robust I/O routines
  **********************************/
+ /*
+  *
+  */
 ssize_t
 Rio_readn_w(int fd, void *ptr, size_t nbytes) 
 {
@@ -119,6 +146,9 @@ Rio_readn_w(int fd, void *ptr, size_t nbytes)
 	return readn;
 }
 
+/*
+ *
+ */
 void 
 Rio_writen_w(int fd, void *usrbuf, size_t n)
 {
@@ -127,7 +157,10 @@ Rio_writen_w(int fd, void *usrbuf, size_t n)
 			strerror(errno));
 }
 
-ssize_t 
+/*
+ *
+ */
+ssize_t
 Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen)
 {
 	ssize_t readline;
