@@ -7,22 +7,26 @@
  * 
  */ 
 
+#include <stdbool.h>
 #include "csapp.h"
 
 /*
  * Function prototypes
  */
-void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, 
-	char *uri, int size);
+void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
+    char *uri, int size);
 void logging(char *logString, char *fileName);
-int	parse_uri(char *uri, char *target_addr, char *path, int *port);
+int parse_uri(char *uri, char *target_addr, char *path, int *port);
+int Rio_readn_w();
+int Rio_readlineb_w();
+int Rio_writen_w();
 
 /* Need to write these files
-open_clientfd_ts - use the thread-safe functions getaddrinfo and getnameinfo.
-Rio_readn_w
-Rio_readlineb_w
-Rio_writen_w
-*/
+ * open_clientfd_ts - use the thread-safe functions getaddrinfo and getnameinfo.
+ * Rio_readn_w
+ * Rio_readlineb_w
+ * Rio_writen_w
+ */
 
 bool verbose = false;
 
@@ -62,7 +66,6 @@ main(int argc, char **argv)
 		inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, INET_ADDRSTRLEN);
 		printf("server connected to %s (%s)\n", host_name, haddrp);
 
-    		echo(connfd);
     		Close(connfd);
     	}
     	exit(0);
