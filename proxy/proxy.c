@@ -13,13 +13,13 @@
 /*
  * Function prototypes
  */
+ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes);
+ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen);
+int parse_uri(char *uri, char *hostname, char *pathname, int *port);
+void Rio_writen_w(int fd, void *usrbuf, size_t n);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     char *uri, int size);
 void logging(char *logString, char *fileName);
-int parse_uri(char *uri, char *target_addr, char *path, int *port);
-int Rio_readn_w();
-int Rio_readlineb_w();
-int Rio_writen_w();
 
 /* Need to write these files
  * open_clientfd_ts - use the thread-safe functions getaddrinfo and getnameinfo.
@@ -84,7 +84,6 @@ main(int argc, char **argv)
 	//return (0);
 }
 
-
 /*
  * logging - Make log entries
  *
@@ -103,6 +102,40 @@ logging(char *logString, char *fileName)
 	FILE *logFile = Fopen(fileName, "ab+"); // able to read/write binary files
 	fprintf(logFile, "%s\n", logString);
 	Fclose(logFile);
+}
+
+/**********************************
+ * Wrappers for robust I/O routines
+ **********************************/
+ssize_t
+Rio_readn_w(int fd, void *ptr, size_t nbytes) 
+{
+	ssize_t readn;
+	if ((readn = rio_readn(fd, ptr, nbytes)) < 0) {
+		fprintf(stdout, "Error! Failed to read request: %s\n", 
+			strerror(errno));
+		return 0;
+	}
+	return readn;
+}
+
+void 
+Rio_writen_w(int fd, void *usrbuf, size_t n)
+{
+	if (rio_writen(fd, usrbuf, n) != (int) n)
+		fprintf(stdout, "Error! Failed to write into file: %s\n", 
+			strerror(errno));
+}
+
+ssize_t 
+Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen)
+{
+	ssize_t readline;
+	if ((readline = rio_readlineb(rp, usrbuf, maxlen)) < 0) {
+		fprintf(stdout, "Error! Failed to read line: %s\n", strerror(errno));
+		return 0;
+	}
+    return readline;
 }
 
 /* --- Given Functions --- */
