@@ -7,22 +7,26 @@
  * 
  */ 
 
+#include <stdbool.h>
 #include "csapp.h"
 
 /*
  * Function prototypes
  */
-void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, 
-	char *uri, int size);
+ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes);
+ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen);
+int parse_uri(char *uri, char *hostname, char *pathname, int *port);
+void Rio_writen_w(int fd, void *usrbuf, size_t n);
+void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
+    char *uri, int size);
 void logging(char *logString, char *fileName);
-int	parse_uri(char *uri, char *target_addr, char *path, int *port);
 
-/* Need to write these functions
-open_clientfd_ts - use the thread-safe functions getaddrinfo and getnameinfo.
-Rio_readn_w
-Rio_readlineb_w
-Rio_writen_w
-*/
+/* Need to write these files
+ * open_clientfd_ts - use the thread-safe functions getaddrinfo and getnameinfo.
+ * Rio_readn_w
+ * Rio_readlineb_w
+ * Rio_writen_w
+ */
 
 bool verbose = false;
 
@@ -32,15 +36,48 @@ bool verbose = false;
 int
 main(int argc, char **argv)
 {
+	int listenfd, connfd, port, error;
+	socklen_t clientlen;
+	struct sockaddr_in clientaddr;
+	char haddrp[INET_ADDRSTRLEN];
+	char host_name[NI_MAXHOST];
+	
+	if (argc != 2) {
+        	fprintf(stderr, "usage: %s <port>\n", argv[0]);
+        	exit(0);
+	}
+	
+	port = atoi(argv[1]);
+	listenfd = Open_listenfd(port);
+	
+	while (1) {
+    		
+    		clientlen = sizeof(clientaddr);
+    		connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+
+    		/* determine the domain name and IP address of the client */
+		error = getnameinfo((struct sockaddr *)&clientaddr, sizeof(clientaddr), host_name, sizeof(host_name), NULL,0, 0);
+	
+		if (error != 0) {
+			fprintf(stderr, "ERROR: %s\n", gai_strerror(error));
+			Close(connfd);
+			continue;
+		}
+		inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, INET_ADDRSTRLEN);
+		printf("server connected to %s (%s)\n", host_name, haddrp);
+
+    		Close(connfd);
+    	}
+    	exit(0);
 
 	/* Check the arguments. */
-	if (argc != 2) {
+	/*if (argc != 2) {
 		fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
 		exit(0);
-	}
+	}*/
 
 	/* Return success. */
-	return (0);
+	//return (0);
 }
 
 /*
