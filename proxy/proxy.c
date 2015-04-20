@@ -2,8 +2,8 @@
  * proxy.c - CS:APP Web proxy
  *
  * TEAM MEMBERS:
- *     John Q. Student, jqs@rice.edu 
- *     Jane R. Student, jrs@rice.edu
+ *     Xin Huang, xyh1@rice.edu 
+ *     Leo Meister, lpm2@rice.edu
  * 
  */ 
 
