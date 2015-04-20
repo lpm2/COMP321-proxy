@@ -62,6 +62,8 @@ main(int argc, char **argv)
         	exit(0);
 	}
 	
+	//[TODO] Handle sigpipe signals
+	
 	port = atoi(argv[1]);
 	listenfd = Open_listenfd(port);
 	
@@ -153,9 +155,10 @@ main(int argc, char **argv)
     				    strlen(request));
     			}
     			
-    			//if HTTP/1.1, can use Connection: Keep-Alive header
-    			// and it requires a host header Host: host_name
-
+    			//if HTTP/1.1, it requires a host header Host: host_name
+			//[TODO] Strip Proxy-Connection and Connection headers
+			// out of the request, add in Connection: close if using 
+			// HTTP/1.1
     			while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
     			    MAXLINE)) > 0) {
     			    	if (verbose)
