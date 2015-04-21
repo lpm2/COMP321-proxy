@@ -144,12 +144,11 @@ main(int argc, char **argv)
 			printf("%s %s %s\n", method, uri, version);
 			printf("\n*** End of Request ***\n\n");
 			
-			// request = strcat(method, " ");
-			// request = strcat(request, path_name);
-			// request = strcat(request, " ");
-			// request = strcat(request, version);
-			// request = strcat(request, "\r\n");
-			sprintf(request, "%s %s %s\r\n", method, path_name, version);
+			request = strcat(method, " ");
+			request = strcat(request, path_name);
+			request = strcat(request, " ");
+			request = strcat(request, version);
+			request = strcat(request, "\r\n");
 			
 			//open connection to server
 			//read request into server, making sure
@@ -193,7 +192,7 @@ main(int argc, char **argv)
 			// Print statements like proxyref
 			printf("Request %u: Forwarding request to end server\n", 
 				number_Requests);
-			printf("%s\n", method);
+			printf("%s\n", &(method[strlen(method)-2]));
 			printf("Connection: close\n");
 			printf("\n*** End of Request ***\n\n");
 
