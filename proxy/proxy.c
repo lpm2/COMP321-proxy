@@ -279,22 +279,31 @@ logging(char *logString, char *fileName)
  *   Returns -1 and sets errno on Unix error. 
  *   Returns -2 and sets h_errno on DNS (gethostbyname) error.
  */
-/* $begin Open_clientfd_ts */
-int
-Open_clientfd_ts(char *hostname, int port) 
+/* $begin open_clientfd */
+int open_clientfd(char *hostname, int port) // [TODO change this to open_clientfdts with safe function calls]
 {
-    int rc;
+    int clientfd;
+    struct hostent *hp;
+    struct sockaddr_in serveraddr;
 
-    if ((rc = open_clientfd(hostname, port)) < 0) {
-	if (rc == -1)
-		fprintf(stderr, "Unix error in open_clientfd!\n");
+    if ((clientfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	return -1; /* check errno for cause of error */
 
-	else        
-		fprintf(stderr, "DNS error: %s\n", gai_strerror(rc));
-    }
-    return rc;
+    /* Fill in the server's IP address and port */
+    if ((hp = gethostbyname(hostname)) == NULL)
+	return -2; /* check h_errno for cause of error */
+    bzero((char *) &serveraddr, sizeof(serveraddr));
+    serveraddr.sin_family = AF_INET;
+    bcopy((char *)hp->h_addr_list[0], 
+	  (char *)&serveraddr.sin_addr.s_addr, hp->h_length);
+    serveraddr.sin_port = htons(port);
+
+    /* Establish a connection with the server */
+    if (connect(clientfd, (SA *) &serveraddr, sizeof(serveraddr)) < 0)
+	return -1;
+    return clientfd;
 }
-/* $end Open_clientfd_ts */
+/* $end open_clientfd */
 
 
 /*
@@ -319,9 +328,27 @@ read_requesthdrs(rio_t *rp)
 /**********************************
  * Wrappers for robust I/O routines
  **********************************/
- /*
-  *
-  */
+/*
+ *
+ */
+int
+Open_clientfd_ts(char *hostname, int port) 
+{
+    int rc;
+
+    if ((rc = open_clientfd(hostname, port)) < 0) {
+	if (rc == -1)
+		fprintf(stderr, "Unix error in open_clientfd!\n");
+
+	else        
+		fprintf(stderr, "DNS error: %s\n", gai_strerror(rc));
+    }
+    return rc;
+}
+
+/*
+ *
+ */
 ssize_t
 Rio_readn_w(int fd, void *ptr, size_t nbytes) 
 {
