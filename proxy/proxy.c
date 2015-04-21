@@ -27,7 +27,7 @@ void logging(char *logString, char *fileName);
 #define SIZEOF_GET 3
 #define SIZEOF_VERSION 8
 unsigned int number_Requests = 0;
-bool verbose = true;
+bool verbose = false;
 static char GET[4] = "GET";
 
 /* 
@@ -214,9 +214,9 @@ main(int argc, char **argv)
 				
 				Close(conn_to_serverfd);
 				// Print statements like proxyref
-				printf("Request %u: Forwarded %d bytes from end server to 
-					client\n", number_Requests, num_bytes);
 			}
+		printf("Request %u: Forwarded %d bytes from end server to client\n", 
+			number_Requests, num_bytes);
 
 		if (verbose)
 			printf("Closing connection to client\n");
@@ -235,8 +235,7 @@ main(int argc, char **argv)
 		
 		Close(listenfd); 
 		
-		number_Requests += 1;
-
+		number_Requests += 1; // this isn't working
 		exit(0);
 }
 
