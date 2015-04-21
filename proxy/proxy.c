@@ -21,11 +21,8 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     char *uri, int size);
 void logging(char *logString, char *fileName);
 
-/* Need to write these files
+/* Need to write these functions
  * open_clientfd_ts - use the thread-safe functions getaddrinfo and getnameinfo.
- * Rio_readn_w
- * Rio_readlineb_w
- * Rio_writen_w
  */
 #define SIZEOF_GET 3
 #define SIZEOF_VERSION 8
@@ -69,127 +66,127 @@ main(int argc, char **argv)
 	
 	while (1) {
     		
-    		num_bytes = 0;
-    		cur_bytes = 0;
-    		clientlen = sizeof(clientaddr);
-    		if (verbose)
-    			printf("Waiting for connection\n");
-    		conn_to_clientfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
-    		if (verbose)
-    			printf("Connection made\n");
-    		Rio_readinitb(&client_rio, conn_to_clientfd);
-    		if (verbose)
-    			printf("Initialized rio stream\n");
-    		Rio_readlineb_w(&client_rio, buf, MAXLINE);
-    		if (verbose) {
-    			printf("Read in request line\n");
-    			printf("Buf: %s\n", buf);
-    		}
-    		sscanf(buf, "%s %s %s", method, uri, version);
-    		if (verbose) {
-    			printf("Parsed request line\n");
-    			printf("Method: %s\nURI: %s\nVersion: %s\n", method, 
-    			    uri, version);
-    			printf("method: %s GET: %s\n", method, GET);
-    			printf("Is get? %d\n", strcmp(method, GET));
-    		}
-    		
-    		//Check whether a GET request was sent
-    		// [TODO] may need to use strcasecmp
-    		if (strcasecmp(method, GET) == 0) {
-    			
-    			if (verbose)
-    				printf("GET request received\n");
-    			
-    			if (parse_uri(uri, host_name, path_name, &port) == -1) {
-    				printf("Error parsing URI!\n");
-    				Close(conn_to_clientfd);
-    				continue;
-    			}
-    			
-    			if (verbose)
-    				printf("hostname: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
-    			
-    			
-    			/* determine the domain name and IP address of the 
-    			 * client
-    			 */
-    			error = getnameinfo((struct sockaddr *)&clientaddr,
-    			    sizeof(clientaddr), host_name, sizeof(host_name), 
-    			    NULL,0, 0);
-	
-			if (error != 0) {
-				fprintf(stderr, "ERROR: %s\n",
-				    gai_strerror(error));
+		num_bytes = 0;
+		cur_bytes = 0;
+		clientlen = sizeof(clientaddr);
+		if (verbose)
+			printf("Waiting for connection\n");
+		conn_to_clientfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+		if (verbose)
+			printf("Connection made\n");
+		Rio_readinitb(&client_rio, conn_to_clientfd);
+		if (verbose)
+			printf("Initialized rio stream\n");
+		Rio_readlineb_w(&client_rio, buf, MAXLINE);
+		if (verbose) {
+			printf("Read in request line\n");
+			printf("Buf: %s\n", buf);
+		}
+		sscanf(buf, "%s %s %s", method, uri, version);
+		if (verbose) {
+			printf("Parsed request line\n");
+			printf("Method: %s\nURI: %s\nVersion: %s\n", method, 
+			    uri, version);
+			printf("method: %s GET: %s\n", method, GET);
+			printf("Is get? %d\n", strcmp(method, GET));
+		}
+		
+		//Check whether a GET request was sent
+		// [TODO] may need to use strcasecmp
+		if (strcasecmp(method, GET) == 0) {
+			
+			if (verbose)
+				printf("GET request received\n");
+			
+			if (parse_uri(uri, host_name, path_name, &port) == -1) {
+				printf("Error parsing URI!\n");
 				Close(conn_to_clientfd);
 				continue;
 			}
-			inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, 
-			    INET_ADDRSTRLEN);
-			printf("server connected to %s (%s)\n", host_name,
-			    haddrp);
 			
-    			request = strcat(method, " ");
-    			request = strcat(request, path_name);
-    			request = strcat(request, " ");
-    			request = strcat(request, version);
-    			request = strcat(request, "\r\n");
-    			
-    			//open connection to server
-    			//read request into server, making sure
-    			//to use parsed pathname, not full url
-    			conn_to_serverfd = Open_clientfd(host_name, port);
-    			Rio_readinitb(&server_rio, conn_to_serverfd);
-    			Rio_writen_w(conn_to_serverfd, request, strlen(request));
-    			if (verbose)
-    				printf("Wrote request to server: %s\n", request);
-    			
-    			if (strstr(version, "1.1") != NULL) {
-    				char host_header[7] = "Host: ";
-    				request = strcat(host_header, host_name);
-    				request = strcat(request, "\r\n");
-    				if (verbose)
-    					printf("HTTP 1.1 host header: %s\n", request);
-    				
-    				Rio_writen_w(conn_to_serverfd, request, 
-    				    strlen(request));
-    			}
-    			
-    			//if HTTP/1.1, it requires a host header Host: host_name
-			//[TODO] Strip Proxy-Connection and Connection headers
-			// out of the request, add in Connection: close if using 
-			// HTTP/1.1
-    			while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
-    			    MAXLINE)) > 0) {
-    			    	if (verbose)
-    			    		printf("Writing request header to server: %s\n", buf);
-    				Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
-    				
-    				if (strcmp(buf, "\r\n") == 0)
-    					break;
-    			}
-    			
-    			
-    			if (verbose)
-    				printf("Preparing to read reply to client\n");
-			//receive reply and forward it to browser
-			//while(read != 0) increment num_bytes during this
-			while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
+			if (verbose)
+				printf("hostname: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
+			
+			
+			/* determine the domain name and IP address of the 
+			 * client
+			 */
+			error = getnameinfo((struct sockaddr *)&clientaddr,
+			    sizeof(clientaddr), host_name, sizeof(host_name), 
+			    NULL,0, 0);
+
+		if (error != 0) {
+			fprintf(stderr, "ERROR: %s\n",
+			    gai_strerror(error));
+			Close(conn_to_clientfd);
+			continue;
+		}
+		inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, 
+		    INET_ADDRSTRLEN);
+		printf("server connected to %s (%s)\n", host_name,
+		    haddrp);
+		
+			request = strcat(method, " ");
+			request = strcat(request, path_name);
+			request = strcat(request, " ");
+			request = strcat(request, version);
+			request = strcat(request, "\r\n");
+			
+			//open connection to server
+			//read request into server, making sure
+			//to use parsed pathname, not full url
+			conn_to_serverfd = Open_clientfd(host_name, port);
+			Rio_readinitb(&server_rio, conn_to_serverfd);
+			Rio_writen_w(conn_to_serverfd, request, strlen(request));
+			if (verbose)
+				printf("Wrote request to server: %s\n", request);
+			
+			if (strstr(version, "1.1") != NULL) {
+				char host_header[7] = "Host: ";
+				request = strcat(host_header, host_name);
+				request = strcat(request, "\r\n");
+				if (verbose)
+					printf("HTTP 1.1 host header: %s\n", request);
+				
+				Rio_writen_w(conn_to_serverfd, request, 
+				    strlen(request));
+			}
+			
+			//if HTTP/1.1, it requires a host header Host: host_name
+		//[TODO] Strip Proxy-Connection and Connection headers
+		// out of the request, add in Connection: close if using 
+		// HTTP/1.1
+			while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
 			    MAXLINE)) > 0) {
-    				num_bytes += cur_bytes;
-    				Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
-    				printf("Read response: %s\n", buf);
-    			}
-    			if (verbose)
-    				printf("Closing connection to server\n");
-    			Close(conn_to_serverfd);
-    		}
-    		if (verbose)
-    			printf("Closing connection to client\n");
-    		Close(conn_to_clientfd);
-    	}
-    	
-    	exit(0);
+			    	if (verbose)
+			    		printf("Writing request header to server: %s\n", buf);
+				Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
+				
+				if (strcmp(buf, "\r\n") == 0)
+					break;
+			}
+			
+			
+			if (verbose)
+				printf("Preparing to read reply to client\n");
+		//receive reply and forward it to browser
+		//while(read != 0) increment num_bytes during this
+		while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
+		    MAXLINE)) > 0) {
+				num_bytes += cur_bytes;
+				Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
+				printf("Read response: %s\n", buf);
+			}
+			if (verbose)
+				printf("Closing connection to server\n");
+			Close(conn_to_serverfd);
+		}
+		if (verbose)
+			printf("Closing connection to client\n");
+		Close(conn_to_clientfd);
+	}
+	
+	exit(0);
 }
 
 /*
