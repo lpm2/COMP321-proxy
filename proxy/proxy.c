@@ -140,7 +140,7 @@ main(int argc, char **argv)
 			printf("Request %u: Received request from %s (%s)\n", 
 				number_Requests, host_name, haddrp);
 			printf("%s %s %s\n", method, uri, version);
-			printf("\n*** End of Request ***\n");
+			printf("\n*** End of Request ***\n\n");
 		
 			request = strcat(method, " ");
 			request = strcat(request, path_name);
@@ -192,7 +192,7 @@ main(int argc, char **argv)
 				number_Requests);
 			printf("%s / %s\n", method, version);
 			printf("Connection: close\n");
-			printf("\n*** End of Request ***\n");
+			printf("\n*** End of Request ***\n\n");
 
 			if (verbose)
 				printf("Preparing to read reply to client\n");
@@ -231,11 +231,11 @@ main(int argc, char **argv)
 
 		if (verbose)
 			printf("Finished writing log\n");
+
+		number_Requests += 1; // this isn't working?
 	}
 		
 		Close(listenfd); 
-		
-		number_Requests += 1; // this isn't working
 		exit(0);
 }
 
