@@ -47,6 +47,7 @@ main(int argc, char **argv)
 	char uri[MAXLINE];
 	char version[SIZEOF_VERSION];
 	char *request;
+	char logstring[MAXLINE];
 	//char *host_header = "Host: "; //hackish solution to strcat?
 	int listenfd, port, error;
 	int conn_to_clientfd;
@@ -165,12 +166,13 @@ main(int argc, char **argv)
 			}
 			
 			//if HTTP/1.1, it requires a host header Host: host_name
-		//[TODO] Strip Proxy-Connection and Connection headers
-		// out of the request, add in Connection: close if using 
-		// HTTP/1.1
+			//[TODO] Strip Proxy-Connection and Connection headers
+			// out of the request, add in Connection: close if using 
+			// HTTP/1.1
 			while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
 			    MAXLINE)) > 0) {
-			    	
+			    // num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
+		    	
 		    	if (verbose)
 		    		printf("Writing request header to server: %s\n", buf);
 				
@@ -183,28 +185,41 @@ main(int argc, char **argv)
 			if (verbose)
 				printf("Preparing to read reply to client\n");
 		
-		//receive reply and forward it to browser
-		//while(read != 0) increment num_bytes during this
-		while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
-		    MAXLINE)) > 0) {
-				num_bytes += cur_bytes;
-				Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
-				printf("Read response: %s\n", buf);
+			//receive reply and forward it to browser
+			//while(read != 0) increment num_bytes during this
+			while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
+			    MAXLINE)) > 0) {
+					num_bytes += cur_bytes;
+					
+					if (verbose)
+						printf("Read response: %s\n", buf);
+
+					Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
+				}
+
+				if (verbose)
+					printf("Closing connection to server\n");
+				
+				Close(conn_to_serverfd);
 			}
 
 			if (verbose)
-				printf("Closing connection to server\n");
+				printf("Closing connection to client\n");
 			
-			Close(conn_to_serverfd);
-		}
+			Close(conn_to_clientfd);
 
-		if (verbose)
-			printf("Closing connection to client\n");
+			if (verbose)
+				printf("Writing log to file\n");
+			
+			format_log_entry(logstring, clientaddr, uri, num_bytes);
+			logging(logstring, "proxy.log");
+
+			if (verbose)
+				printf("Finished writing log\n");
+		}
 		
-		Close(conn_to_clientfd);
-	}
-	
-	exit(0);
+		Close(listenfd); 
+		exit(0);
 }
 
 /*
