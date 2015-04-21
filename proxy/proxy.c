@@ -20,6 +20,7 @@ void Rio_writen_w(int fd, void *usrbuf, size_t n);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     char *uri, int size);
 void logging(char *logString, char *fileName);
+void read_requesthdrs(rio_t *rp) ;
 
 /* Need to write these functions
  * open_clientfd_ts - use the thread-safe functions getaddrinfo and getnameinfo.
@@ -82,6 +83,7 @@ main(int argc, char **argv)
 			printf("Read in request line\n");
 			printf("Buf: %s\n", buf);
 		}
+		//[TODO] error checking
 		sscanf(buf, "%s %s %s", method, uri, version);
 		if (verbose) {
 			printf("Parsed request line\n");
@@ -98,7 +100,7 @@ main(int argc, char **argv)
 			if (verbose)
 				printf("GET request received\n");
 			
-			if (parse_uri(uri, host_name, path_name, &port) == -1) {
+			if (parse_uri(uri, host_name, path_name, &port) < 0) {
 				printf("Error parsing URI!\n");
 				Close(conn_to_clientfd);
 				continue;
@@ -207,6 +209,25 @@ logging(char *logString, char *fileName)
 	FILE *logFile = Fopen(fileName, "ab+"); // able to read/write binary files
 	fprintf(logFile, "%s\n", logString);
 	Fclose(logFile);
+}
+
+/*
+ *
+ *
+ *
+ * read_requesthdrs - read and parse HTTP request headers
+ */
+void
+read_requesthdrs(rio_t *rp) 
+{
+    char buf[MAXLINE];
+
+    Rio_readlineb(rp, buf, MAXLINE);
+    while(strcmp(buf, "\r\n")) {
+	Rio_readlineb(rp, buf, MAXLINE);
+	printf("%s", buf);
+    }
+    return;
 }
 
 /**********************************
