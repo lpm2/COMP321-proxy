@@ -200,7 +200,7 @@ main(int argc, char **argv)
 			// Print statements like proxyref
 			printf("Request %u: Forwarding request to end server\n", 
 				number_Requests);
-			printf("%s\n", &(method[strlen(method)-2]));
+			printf("%.14s\n", method);
 			printf("Connection: close\n");
 			printf("\n*** End of Request ***\n\n");
 
