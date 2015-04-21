@@ -190,7 +190,7 @@ main(int argc, char **argv)
 			// Print statements like proxyref
 			printf("Request %u: Forwarding request to end server\n", 
 				number_Requests);
-			printf("%s / %s\n", method, version);
+			printf("%s / %s\n", method, method);
 			printf("Connection: close\n");
 			printf("\n*** End of Request ***\n\n");
 
@@ -226,13 +226,13 @@ main(int argc, char **argv)
 		if (verbose)
 			printf("Writing log to file\n");
 		
-		format_log_entry(logstring, &clientaddr, uri, num_bytes);
+		format_log_entry(logstring, &clientaddr, uri, num_bytes); // [TODO] This is very slow
 		logging(logstring, "proxy.log");
 
 		if (verbose)
 			printf("Finished writing log\n");
 
-		number_Requests += 1; // this isn't working?
+		number_Requests += 1; // iterate request count
 	}
 		
 		Close(listenfd); 
