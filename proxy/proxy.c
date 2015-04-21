@@ -211,7 +211,7 @@ main(int argc, char **argv)
 			if (verbose)
 				printf("Writing log to file\n");
 			
-			format_log_entry(logstring, clientaddr, uri, num_bytes);
+			format_log_entry(logstring, &clientaddr, uri, num_bytes);
 			logging(logstring, "proxy.log");
 
 			if (verbose)
