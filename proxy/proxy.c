@@ -26,6 +26,7 @@ void logging(char *logString, char *fileName);
  */
 #define SIZEOF_GET 3
 #define SIZEOF_VERSION 8
+unsigned int number_Requests = 0;
 bool verbose = true;
 static char GET[4] = "GET";
 
@@ -125,17 +126,21 @@ main(int argc, char **argv)
 			    sizeof(clientaddr), host_name, sizeof(host_name), 
 			    NULL,0, 0);
 
-		if (error != 0) {
-			fprintf(stderr, "ERROR: %s\n",
-			    gai_strerror(error));
-			Close(conn_to_clientfd);
-			continue;
-		}
+			if (error != 0) {
+				fprintf(stderr, "ERROR: %s\n",
+				    gai_strerror(error));
+				Close(conn_to_clientfd);
+				continue;
+			}
 
-		inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, 
-		    INET_ADDRSTRLEN);
-		printf("server connected to %s (%s)\n", host_name,
-		    haddrp);
+			inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, 
+			    INET_ADDRSTRLEN);
+
+			// Print statements like proxyref
+			printf("Request %u: Received request from %s (%s)\n", 
+				number_Requests, host_name, haddrp);
+			printf("%s %s %s\n", method, uri, version);
+			printf("\n*** End of Request ***\n");
 		
 			request = strcat(method, " ");
 			request = strcat(request, path_name);
@@ -182,6 +187,13 @@ main(int argc, char **argv)
 				break;
 			}
 			
+			// Print statements like proxyref
+			printf("Request %u: Forwarding request to end server\n", 
+				number_Requests);
+			printf("%s / %s\n", method, version);
+			printf("Connection: close\n");
+			printf("\n*** End of Request ***\n");
+
 			if (verbose)
 				printf("Preparing to read reply to client\n");
 		
@@ -201,24 +213,30 @@ main(int argc, char **argv)
 					printf("Closing connection to server\n");
 				
 				Close(conn_to_serverfd);
+				// Print statements like proxyref
+				printf("Request %u: Forwarded %d bytes from end server to 
+					client\n", number_Requests, num_bytes);
 			}
 
-			if (verbose)
-				printf("Closing connection to client\n");
-			
-			Close(conn_to_clientfd);
-
-			if (verbose)
-				printf("Writing log to file\n");
-			
-			format_log_entry(logstring, &clientaddr, uri, num_bytes);
-			logging(logstring, "proxy.log");
-
-			if (verbose)
-				printf("Finished writing log\n");
-		}
+		if (verbose)
+			printf("Closing connection to client\n");
 		
-		//Close(listenfd); 
+		Close(conn_to_clientfd);
+
+		if (verbose)
+			printf("Writing log to file\n");
+		
+		format_log_entry(logstring, &clientaddr, uri, num_bytes);
+		logging(logstring, "proxy.log");
+
+		if (verbose)
+			printf("Finished writing log\n");
+	}
+		
+		Close(listenfd); 
+		
+		number_Requests += 1;
+
 		exit(0);
 }
 
