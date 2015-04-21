@@ -21,6 +21,7 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     char *uri, int size);
 void logging(char *logString, char *fileName);
 void read_requesthdrs(rio_t *rp) ;
+int Open_clientfd_ts(char *hostname, int port);
 
 /* Need to write these functions
  * open_clientfd_ts - use the thread-safe functions getaddrinfo and getnameinfo.
@@ -153,7 +154,14 @@ main(int argc, char **argv)
 			//open connection to server
 			//read request into server, making sure
 			//to use parsed pathname, not full url
-			conn_to_serverfd = Open_clientfd(host_name, port);
+			
+			if ((conn_to_serverfd = Open_clientfd_ts(host_name,
+			    port)) < 0) {
+			    Close(conn_to_clientfd);
+			    continue;
+			}
+			
+			
 			Rio_readinitb(&server_rio, conn_to_serverfd);
 			Rio_writen_w(conn_to_serverfd, request, strlen(request));
 			
@@ -260,6 +268,34 @@ logging(char *logString, char *fileName)
 	fprintf(logFile, "%s\n", logString);
 	Fclose(logFile);
 }
+
+
+/******************************** 
+ * Client/server helper functions
+ ********************************/
+/*
+ * open_clientfd - open connection to server at <hostname, port> 
+ *   and return a socket descriptor ready for reading and writing.
+ *   Returns -1 and sets errno on Unix error. 
+ *   Returns -2 and sets h_errno on DNS (gethostbyname) error.
+ */
+/* $begin Open_clientfd_ts */
+int
+Open_clientfd_ts(char *hostname, int port) 
+{
+    int rc;
+
+    if ((rc = open_clientfd(hostname, port)) < 0) {
+	if (rc == -1)
+		fprintf(stderr, "Unix error in open_clientfd!\n");
+
+	else        
+		fprintf(stderr, "DNS error: %s\n", gai_strerror(rc));
+    }
+    return rc;
+}
+/* $end Open_clientfd_ts */
+
 
 /*
  *
