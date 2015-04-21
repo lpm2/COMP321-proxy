@@ -280,7 +280,7 @@ logging(char *logString, char *fileName)
  *   Returns -2 and sets h_errno on DNS (gethostbyname) error.
  */
 /* $begin open_clientfd */
-int open_clientfd(char *hostname, int port) // [TODO change this to open_clientfdts with safe function calls]
+int open_clientfd_ts(char *hostname, int port) // [TODO add thread safe function calls]
 {
     int clientfd;
     struct hostent *hp;
@@ -290,7 +290,7 @@ int open_clientfd(char *hostname, int port) // [TODO change this to open_clientf
 	return -1; /* check errno for cause of error */
 
     /* Fill in the server's IP address and port */
-    if ((hp = gethostbyname(hostname)) == NULL)
+    if ((hp = gethostbyname(hostname)) == NULL) 	// [TODO] use getaddrinfo or getnameinfo instead 
 	return -2; /* check h_errno for cause of error */
     bzero((char *) &serveraddr, sizeof(serveraddr));
     serveraddr.sin_family = AF_INET;
@@ -336,7 +336,7 @@ Open_clientfd_ts(char *hostname, int port)
 {
     int rc;
 
-    if ((rc = open_clientfd(hostname, port)) < 0) {
+    if ((rc = open_clientfd_ts(hostname, port)) < 0) {
 	if (rc == -1)
 		fprintf(stderr, "Unix error in open_clientfd!\n");
 
