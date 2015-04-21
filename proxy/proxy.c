@@ -27,7 +27,8 @@ void read_requesthdrs(rio_t *rp) ;
  */
 #define SIZEOF_GET 3
 #define SIZEOF_VERSION 8
-bool verbose = true;
+unsigned int number_Requests = 0;
+bool verbose = false;
 static char GET[4] = "GET";
 
 /* 
@@ -48,6 +49,7 @@ main(int argc, char **argv)
 	char uri[MAXLINE];
 	char version[SIZEOF_VERSION];
 	char *request;
+	char logstring[MAXLINE];
 	//char *host_header = "Host: "; //hackish solution to strcat?
 	int listenfd, port, error;
 	int conn_to_clientfd;
@@ -69,22 +71,32 @@ main(int argc, char **argv)
     		
 		num_bytes = 0;
 		cur_bytes = 0;
+
 		clientlen = sizeof(clientaddr);
+		
 		if (verbose)
 			printf("Waiting for connection\n");
-		conn_to_clientfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+		
+		conn_to_clientfd = Accept(listenfd, (SA *) &clientaddr, &clientlen);
+		
 		if (verbose)
 			printf("Connection made\n");
+		
 		Rio_readinitb(&client_rio, conn_to_clientfd);
+		
 		if (verbose)
 			printf("Initialized rio stream\n");
+		
 		Rio_readlineb_w(&client_rio, buf, MAXLINE);
+		
 		if (verbose) {
 			printf("Read in request line\n");
 			printf("Buf: %s\n", buf);
 		}
+		
 		//[TODO] error checking
 		sscanf(buf, "%s %s %s", method, uri, version);
+		
 		if (verbose) {
 			printf("Parsed request line\n");
 			printf("Method: %s\nURI: %s\nVersion: %s\n", method, 
@@ -109,7 +121,6 @@ main(int argc, char **argv)
 			if (verbose)
 				printf("hostname: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
 			
-			
 			/* determine the domain name and IP address of the 
 			 * client
 			 */
@@ -117,22 +128,28 @@ main(int argc, char **argv)
 			    sizeof(clientaddr), host_name, sizeof(host_name), 
 			    NULL,0, 0);
 
-		if (error != 0) {
-			fprintf(stderr, "ERROR: %s\n",
-			    gai_strerror(error));
-			Close(conn_to_clientfd);
-			continue;
-		}
-		inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, 
-		    INET_ADDRSTRLEN);
-		printf("server connected to %s (%s)\n", host_name,
-		    haddrp);
-		
-			request = strcat(method, " ");
-			request = strcat(request, path_name);
-			request = strcat(request, " ");
-			request = strcat(request, version);
-			request = strcat(request, "\r\n");
+			if (error != 0) {
+				fprintf(stderr, "ERROR: %s\n",
+				    gai_strerror(error));
+				Close(conn_to_clientfd);
+				continue;
+			}
+
+			inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, 
+			    INET_ADDRSTRLEN);
+
+			// Print statements like proxyref
+			printf("Request %u: Received request from %s (%s)\n", 
+				number_Requests, host_name, haddrp);
+			printf("%s %s %s\n", method, uri, version);
+			printf("\n*** End of Request ***\n\n");
+			
+			// request = strcat(method, " ");
+			// request = strcat(request, path_name);
+			// request = strcat(request, " ");
+			// request = strcat(request, version);
+			// request = strcat(request, "\r\n");
+			sprintf(request, "%s %s %s\r\n", method, path_name, version);
 			
 			//open connection to server
 			//read request into server, making sure
@@ -140,6 +157,7 @@ main(int argc, char **argv)
 			conn_to_serverfd = Open_clientfd(host_name, port);
 			Rio_readinitb(&server_rio, conn_to_serverfd);
 			Rio_writen_w(conn_to_serverfd, request, strlen(request));
+			
 			if (verbose)
 				printf("Wrote request to server: %s\n", request);
 			
@@ -147,6 +165,7 @@ main(int argc, char **argv)
 				char host_header[7] = "Host: ";
 				request = strcat(host_header, host_name);
 				request = strcat(request, "\r\n");
+				
 				if (verbose)
 					printf("HTTP 1.1 host header: %s\n", request);
 				
@@ -155,40 +174,72 @@ main(int argc, char **argv)
 			}
 			
 			//if HTTP/1.1, it requires a host header Host: host_name
-		//[TODO] Strip Proxy-Connection and Connection headers
-		// out of the request, add in Connection: close if using 
-		// HTTP/1.1
+			//[TODO] Strip Proxy-Connection and Connection headers
+			// out of the request, add in Connection: close if using 
+			// HTTP/1.1
 			while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
 			    MAXLINE)) > 0) {
-			    	if (verbose)
-			    		printf("Writing request header to server: %s\n", buf);
-				Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
+			    // num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
+		    	
+		    	if (verbose)
+		    		printf("Writing request header to server: %s\n", buf);
 				
+				Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
+			
 				if (strcmp(buf, "\r\n") == 0)
-					break;
+				break;
 			}
 			
-			
+			// Print statements like proxyref
+			printf("Request %u: Forwarding request to end server\n", 
+				number_Requests);
+			printf("%s\n", method);
+			printf("Connection: close\n");
+			printf("\n*** End of Request ***\n\n");
+
 			if (verbose)
 				printf("Preparing to read reply to client\n");
-		//receive reply and forward it to browser
-		//while(read != 0) increment num_bytes during this
-		while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
-		    MAXLINE)) > 0) {
-				num_bytes += cur_bytes;
-				Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
-				printf("Read response: %s\n", buf);
+		
+			//receive reply and forward it to browser
+			//while(read != 0) increment num_bytes during this
+			while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
+			    MAXLINE)) > 0) {
+					num_bytes += cur_bytes;
+					
+					if (verbose)
+						printf("Read response: %s\n", buf);
+
+					Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
+				}
+
+				if (verbose)
+					printf("Closing connection to server\n");
+				
+				Close(conn_to_serverfd);
+				// Print statements like proxyref
 			}
-			if (verbose)
-				printf("Closing connection to server\n");
-			Close(conn_to_serverfd);
-		}
+		printf("Request %u: Forwarded %d bytes from end server to client\n", 
+			number_Requests, num_bytes);
+
 		if (verbose)
 			printf("Closing connection to client\n");
+		
 		Close(conn_to_clientfd);
+
+		if (verbose)
+			printf("Writing log to file\n");
+		
+		format_log_entry(logstring, &clientaddr, uri, num_bytes); // [TODO] This is very slow
+		logging(logstring, "proxy.log");
+
+		if (verbose)
+			printf("Finished writing log\n");
+
+		number_Requests += 1; // iterate request count
 	}
-	
-	exit(0);
+		
+		Close(listenfd); 
+		exit(0);
 }
 
 /*
