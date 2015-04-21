@@ -218,7 +218,7 @@ main(int argc, char **argv)
 				printf("Finished writing log\n");
 		}
 		
-		Close(listenfd); 
+		//Close(listenfd); 
 		exit(0);
 }
 
