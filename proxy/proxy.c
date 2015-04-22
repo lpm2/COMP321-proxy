@@ -244,11 +244,14 @@ main(int argc, char **argv)
 		number_Requests += 1; // iterate request count
 	}	
 		
-	Close(listenfd)
+	Close(listenfd);
 
 	exit(0);
 }
 
+/******************************** 
+ * Client/server helper functions
+ ********************************/
 /*
  * logging - Make log entries
  *
@@ -269,10 +272,6 @@ logging(char *logString, char *fileName)
 	Fclose(logFile);
 }
 
-
-/******************************** 
- * Client/server helper functions
- ********************************/
 /*
  * open_clientfd - open connection to server at <hostname, port> 
  *   and return a socket descriptor ready for reading and writing.
@@ -282,7 +281,7 @@ logging(char *logString, char *fileName)
 /* $begin open_clientfd */
 int open_clientfd_ts(char *hostname, int port)
 {
-    int clientfd;
+    int clientfd, ai;
     struct addrinfo *ai_struct;
     struct sockaddr_in serveraddr;
 
@@ -290,8 +289,8 @@ int open_clientfd_ts(char *hostname, int port)
     	return -1; /* check errno for cause of error */
 
     /* Use getaddrinfo for server IP */
-    if ((clientfd = getaddrinfo(hostname, NULL, NULL, &ai_struct)) != 0) {
-    	fprintf(stderr, "DNS error: %s\n", gai_strerror(clientfd));
+    if ((ai = getaddrinfo(hostname, NULL, NULL, &ai_struct)) != 0) {
+    	fprintf(stderr, "DNS error: %s\n", gai_strerror(ai));
     	return -2; /* check h_errno for cause of error */
     } 
     
@@ -344,7 +343,7 @@ Open_clientfd_ts(char *hostname, int port)
 
     if ((rc = open_clientfd_ts(hostname, port)) < 0) {
 	if (rc == -1)
-		fprintf(stderr, "Unix error in open_clientfd!\n");
+		fprintf(stderr, "Unix error in open_clientfd_ts!\n");
 
 	else        
 		fprintf(stderr, "DNS error: %s\n", gai_strerror(rc));
