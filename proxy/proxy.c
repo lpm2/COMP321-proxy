@@ -244,8 +244,7 @@ main(int argc, char **argv)
 		number_Requests += 1; // iterate request count
 	}	
 		
-	if (Close(listenfd) < 0)
-		exit(-1);
+	Close(listenfd)
 
 	exit(0);
 }
