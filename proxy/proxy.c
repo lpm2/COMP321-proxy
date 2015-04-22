@@ -54,7 +54,7 @@ main(int argc, char **argv)
 	int conn_to_clientfd;
 	int conn_to_serverfd;
 	int cur_bytes;	//the number of bytes read in from a single read
-	int num_bytes;	//the number of bytes returned in the server response
+	unsigned int num_bytes;	//the number of bytes returned in the server response
 	
 	if (argc != 2) {
         	fprintf(stderr, "usage: %s <port>\n", argv[0]);
