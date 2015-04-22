@@ -16,16 +16,14 @@
 ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes);
 ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen);
 int parse_uri(char *uri, char *hostname, char *pathname, int *port);
+int Open_clientfd_ts(char *hostname, int port);
+int open_clientfd_ts(char *hostname, int port);
 void Rio_writen_w(int fd, void *usrbuf, size_t n);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     char *uri, int size);
 void logging(char *logString, char *fileName);
 void read_requesthdrs(rio_t *rp) ;
-int Open_clientfd_ts(char *hostname, int port);
 
-/* Need to write these functions
- * open_clientfd_ts - use the thread-safe functions getaddrinfo and getnameinfo.
- */
 #define SIZEOF_GET 3
 #define SIZEOF_VERSION 8
 unsigned int number_Requests = 0;
@@ -219,12 +217,13 @@ main(int argc, char **argv)
 					Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
 				}
 
-				if (verbose)
-					printf("Closing connection to server\n");
-				
-				Close(conn_to_serverfd);
-				// Print statements like proxyref
+			if (verbose)
+				printf("Closing connection to server\n");
+			
+			Close(conn_to_serverfd);
 			}
+
+		// Print statements like proxyref
 		printf("Request %u: Forwarded %d bytes from end server to client\n", 
 			number_Requests, num_bytes);
 
@@ -243,10 +242,12 @@ main(int argc, char **argv)
 			printf("Finished writing log\n");
 
 		number_Requests += 1; // iterate request count
-	}
+	}	
 		
-		Close(listenfd); 
-		exit(0);
+	if (Close(listenfd) < 0)
+		exit(-1);
+
+	exit(0);
 }
 
 /*
@@ -277,30 +278,36 @@ logging(char *logString, char *fileName)
  * open_clientfd - open connection to server at <hostname, port> 
  *   and return a socket descriptor ready for reading and writing.
  *   Returns -1 and sets errno on Unix error. 
- *   Returns -2 and sets h_errno on DNS (gethostbyname) error.
+ *   Returns -2 and sets h_errno on DNS (getaddrinfo) error.
  */
 /* $begin open_clientfd */
-int open_clientfd_ts(char *hostname, int port) // [TODO add thread safe function calls]
+int open_clientfd_ts(char *hostname, int port)
 {
     int clientfd;
-    struct hostent *hp;
+    struct addrinfo *ai_struct;
     struct sockaddr_in serveraddr;
 
     if ((clientfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-	return -1; /* check errno for cause of error */
+    	return -1; /* check errno for cause of error */
 
-    /* Fill in the server's IP address and port */
-    if ((hp = gethostbyname(hostname)) == NULL) 	// [TODO] use getaddrinfo or getnameinfo instead 
-	return -2; /* check h_errno for cause of error */
+    /* Use getaddrinfo for server IP */
+    if ((clientfd = getaddrinfo(hostname, NULL, NULL, &ai_struct)) != 0) {
+    	fprintf(stderr, "DNS error: %s\n", gai_strerror(clientfd));
+    	return -2; /* check h_errno for cause of error */
+    } 
+    
     bzero((char *) &serveraddr, sizeof(serveraddr));
     serveraddr.sin_family = AF_INET;
-    bcopy((char *)hp->h_addr_list[0], 
-	  (char *)&serveraddr.sin_addr.s_addr, hp->h_length);
+
+    bcopy(ai_struct->ai_addr, (struct sockaddr *)&serveraddr, 
+    	ai_struct->ai_addrlen);
     serveraddr.sin_port = htons(port);
 
     /* Establish a connection with the server */
     if (connect(clientfd, (SA *) &serveraddr, sizeof(serveraddr)) < 0)
-	return -1;
+		return -1;
+
+	freeaddrinfo(ai_struct);
     return clientfd;
 }
 /* $end open_clientfd */
