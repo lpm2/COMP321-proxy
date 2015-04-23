@@ -61,7 +61,8 @@ main(int argc, char **argv)
         	exit(0);
 	}
 	
-	//[TODO] Handle sigpipe signals
+	// Handle sigpipe signals
+	Signal(SIGPIPE, SIG_IGN);
 	
 	port = atoi(argv[1]);
 	listenfd = Open_listenfd(port);
@@ -93,15 +94,22 @@ main(int argc, char **argv)
 			printf("Buf: %s\n", buf);
 		}
 		
-		//[TODO] error checking
 		sscanf(buf, "%s %s %s", method, uri, version);
-		
-		if (verbose) {
-			printf("Parsed request line\n");
-			printf("Method: %s\nURI: %s\nVersion: %s\n", method, 
-			    uri, version);
-			printf("method: %s GET: %s\n", method, GET);
-			printf("Is get? %d\n", strcmp(method, GET));
+
+		if (!strstr(buf, "GET")) {
+			printf("Error! Received non-GET request!\n");
+			Free(path_name);
+			Close(conn_to_clientfd);
+			continue;
+		}		
+		else {
+			if (verbose) {
+				printf("Parsed request line\n");
+				printf("Method: %s\nURI: %s\nVersion: %s\n", method, 
+				    uri, version);
+				printf("method: %s GET: %s\n", method, GET);
+				printf("Is get? %d\n", strcmp(method, GET));
+			}
 		}
 		
 		//Check whether a GET request was sent
@@ -118,7 +126,8 @@ main(int argc, char **argv)
 			}
 			
 			if (verbose)
-				printf("hostname: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
+				printf("hostname: %s\npath_name: %s\nport: %d\n", 
+					host_name, path_name, port);
 			
 			/* determine the domain name and IP address of the 
 			 * client
@@ -128,8 +137,7 @@ main(int argc, char **argv)
 			    NULL,0, 0);
 
 			if (error != 0) {
-				fprintf(stderr, "ERROR: %s\n",
-				    gai_strerror(error));
+				fprintf(stderr, "ERROR: %s\n", gai_strerror(error));
 				Close(conn_to_clientfd);
 				continue;
 			}
@@ -192,7 +200,7 @@ main(int argc, char **argv)
 				Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
 			
 				if (strcmp(buf, "\r\n") == 0)
-				break;
+					break;
 			}
 			
 			// Print statements like proxyref
