@@ -119,30 +119,15 @@ main(int argc, char **argv)
 			}
 		}
 		
-		//Check whether a GET request was sent
-		if (strcasecmp(method, GET) == 0) {	
-			//request = temp;
-			//request = strcpy(request, uri);
-			//request = strcat(request, " ");
-			if (verbose)
-				printf("GET request received\n");
-			
-			if (parse_uri(uri, host_name, path_name, &port) < 0) {
-				printf("Error parsing URI!\n");
-				Close(conn_to_clientfd);
-				continue;
-			}
-			
-			if (verbose)
-				printf("host_name: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
+		if (parse_uri(uri, host_name, path_name, &port) < 0) {
+			printf("Error parsing URI!\n");
+			Close(conn_to_clientfd);
+			continue;
 		}
-<<<<<<< HEAD
-=======
-		
+			
 		if (verbose)
 			printf("host_name: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
 		inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, INET_ADDRSTRLEN);
->>>>>>> master
 
 		// Print statements like proxyref
 		printf("Request %u: Received request from %s (%s)\n", 
