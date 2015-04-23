@@ -102,7 +102,7 @@ main(int argc, char **argv)
 			continue;	
 		}
 
-		if (!strstr(buf, "GET")) {
+		if (strstr(buf, "GET") == NULL) {
 			printf("Error! Expected GET request; any other unsupported.\n");
 			Free(path_name);
 			Close(conn_to_clientfd);
@@ -176,22 +176,28 @@ main(int argc, char **argv)
 		//[TODO] Strip Proxy-Connection and Connection headers
 		// out of the request, add in Connection: close if using 
 		// HTTP/1.1
+		
+		printf("Connection header: %s\n", connection_hdr);
+		
 		while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
 		    MAXLINE)) > 0) {
 		    // num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
 		
-			if (verbose)
-				printf("Writing request header to server: %s\n", buf);
-			
+			printf("strstr result: %s\n", strstr("Connection", buf));	
 			// Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
-			if (strstr("Connection: ", buf) != NULL) {
+			if (strstr(buf, "Connection: ") != NULL) {
 				Rio_writen_w(conn_to_serverfd, 
 				    connection_hdr, strlen(buf));
-				    printf("Writing connection closed.\n");
+				    //printf("Writing connection closed.\n");
+				    if (verbose)
+				printf("Writing request header to server: %s\n", connection_hdr);
 			}
-			else
+			else { 
 				Rio_writen_w(conn_to_serverfd, buf,
 				    strlen(buf));
+				    if (verbose)
+				printf("Writing request header to server: %s\n", buf);
+			}
 		
 			if (strcmp(buf, "\r\n") == 0)
 				break;
