@@ -29,7 +29,7 @@ void read_requesthdrs(rio_t *rp) ;
 unsigned int number_Requests = 0;
 bool verbose = true;
 //static char GET[4] = "GET";
-static char *connection_hdr = "Connection: close";
+static char *connection_hdr = "Connection: close\r\n";
 
 /* 
  * main - Main routine for the proxy program 
@@ -129,7 +129,7 @@ main(int argc, char **argv)
 		
 		if (verbose)
 			printf("host_name: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
-
+		inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, INET_ADDRSTRLEN);
 
 		// Print statements like proxyref
 		printf("Request %u: Received request from %s (%s)\n", 
@@ -147,7 +147,8 @@ main(int argc, char **argv)
 		* open connection to server read request into server, 
 		* making sure to use parsed pathname, not full url
 		*/
-
+		if (verbose)
+			printf("Opening connection to server with:\nhost_name: %s\nport: %d\n", host_name, port);
 		if ((conn_to_serverfd = Open_clientfd_ts(host_name,
 		    port)) < 0) {
 		    Close(conn_to_clientfd);
@@ -176,14 +177,11 @@ main(int argc, char **argv)
 		//[TODO] Strip Proxy-Connection and Connection headers
 		// out of the request, add in Connection: close if using 
 		// HTTP/1.1
-		
-		printf("Connection header: %s\n", connection_hdr);
-		
+				
 		while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
 		    MAXLINE)) > 0) {
 		    // num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
 		
-			printf("strstr result: %s\n", strstr("Connection", buf));	
 			// Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
 			if (strstr(buf, "Connection: ") != NULL) {
 				Rio_writen_w(conn_to_serverfd, 
@@ -199,15 +197,17 @@ main(int argc, char **argv)
 				printf("Writing request header to server: %s\n", buf);
 			}
 		
-			if (strcmp(buf, "\r\n") == 0)
+			if (strcmp(buf, "\r\n") == 0) {
+				Rio_writen_w(conn_to_serverfd, buf,
+				    strlen(buf));
 				break;
+			}
 		}
 		
 		// Print statements like proxyref
 		printf("Request %u: Forwarding request to end server\n", 
 			number_Requests);
 		printf("%.14s\n", method);
-		printf("Connection: close\n");
 		printf("\n*** End of Request ***\n\n");
 
 		if (verbose)
@@ -222,7 +222,7 @@ main(int argc, char **argv)
 				if (verbose)
 					printf("Read response: %s\n", buf);
 				
-				Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
+				Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
 				if (strcmp(buf, "\r\n") == 0)
 					break;
 		}
