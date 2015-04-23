@@ -27,7 +27,7 @@ void read_requesthdrs(rio_t *rp) ;
 #define SIZEOF_GET 3
 #define SIZEOF_VERSION 8
 unsigned int number_Requests = 0;
-bool verbose = false;
+bool verbose = true;
 static char GET[4] = "GET";
 
 /* 
@@ -47,10 +47,11 @@ main(int argc, char **argv)
 	char method[SIZEOF_GET];
 	char uri[MAXLINE];
 	char version[SIZEOF_VERSION];
+	//char temp[MAXLINE];
 	char *request;
 	char logstring[MAXLINE];
 	//char *host_header = "Host: "; //hackish solution to strcat?
-	int listenfd, port, error;
+	int listenfd, port;//, error;
 	int conn_to_clientfd;
 	int conn_to_serverfd;
 	int cur_bytes;	//the number of bytes read in from a single read
@@ -93,21 +94,23 @@ main(int argc, char **argv)
 			printf("Buf: %s\n", buf);
 		}
 		
-		//[TODO] error checking
-		sscanf(buf, "%s %s %s", method, uri, version);
+		if (sscanf(buf, "%s %s %s", method, uri, version) <= 0) {
+			printf("Error with sscanf\n");
+			Close(conn_to_clientfd);
+			continue;	
+		}
 		
 		if (verbose) {
 			printf("Parsed request line\n");
 			printf("Method: %s\nURI: %s\nVersion: %s\n", method, 
 			    uri, version);
-			printf("method: %s GET: %s\n", method, GET);
-			printf("Is get? %d\n", strcmp(method, GET));
 		}
 		
 		//Check whether a GET request was sent
-		// [TODO] may need to use strcasecmp
 		if (strcasecmp(method, GET) == 0) {
-			
+			//request = temp;
+			//request = strcpy(request, uri);
+			//request = strcat(request, " ");
 			if (verbose)
 				printf("GET request received\n");
 			
@@ -118,24 +121,7 @@ main(int argc, char **argv)
 			}
 			
 			if (verbose)
-				printf("hostname: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
-			
-			/* determine the domain name and IP address of the 
-			 * client
-			 */
-			error = getnameinfo((struct sockaddr *)&clientaddr,
-			    sizeof(clientaddr), host_name, sizeof(host_name), 
-			    NULL,0, 0);
-
-			if (error != 0) {
-				fprintf(stderr, "ERROR: %s\n",
-				    gai_strerror(error));
-				Close(conn_to_clientfd);
-				continue;
-			}
-
-			inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, 
-			    INET_ADDRSTRLEN);
+				printf("host_name: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
 
 			// Print statements like proxyref
 			printf("Request %u: Received request from %s (%s)\n", 
@@ -152,7 +138,7 @@ main(int argc, char **argv)
 			//open connection to server
 			//read request into server, making sure
 			//to use parsed pathname, not full url
-			
+			printf("Host name: %s\n", host_name);
 			if ((conn_to_serverfd = Open_clientfd_ts(host_name,
 			    port)) < 0) {
 			    Close(conn_to_clientfd);
@@ -293,7 +279,7 @@ int open_clientfd_ts(char *hostname, int port)
     	fprintf(stderr, "DNS error: %s\n", gai_strerror(ai));
     	return -2; /* check h_errno for cause of error */
     } 
-    
+
     bzero((char *) &serveraddr, sizeof(serveraddr));
     serveraddr.sin_family = AF_INET;
 
@@ -302,8 +288,10 @@ int open_clientfd_ts(char *hostname, int port)
     serveraddr.sin_port = htons(port);
 
     /* Establish a connection with the server */
-    if (connect(clientfd, (SA *) &serveraddr, sizeof(serveraddr)) < 0)
+    if (connect(clientfd, (SA *) &serveraddr, sizeof(serveraddr)) < 0) {
+		printf("Error in ts: %s\n", strerror(errno));
 		return -1;
+    }
 
 	freeaddrinfo(ai_struct);
     return clientfd;
