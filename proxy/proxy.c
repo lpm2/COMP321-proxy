@@ -28,7 +28,8 @@ void read_requesthdrs(rio_t *rp) ;
 #define SIZEOF_VERSION 8
 unsigned int number_Requests = 0;
 bool verbose = true;
-static char GET[4] = "GET";
+//static char GET[4] = "GET";
+static char *connection_hdr = "Connection: close";
 
 /* 
  * main - Main routine for the proxy program 
@@ -101,7 +102,7 @@ main(int argc, char **argv)
 			continue;	
 		}
 
-		if (!strstr(buf, "GET")) {
+		if (strstr(buf, "GET") == NULL) {
 			printf("Error! Expected GET request; any other unsupported.\n");
 			Free(path_name);
 			Close(conn_to_clientfd);
@@ -109,6 +110,7 @@ main(int argc, char **argv)
 		}		
 		else {
 			if (verbose) {
+				printf("GET request received\n");
 				printf("Parsed request line\n");
 				printf("Method: %s\nURI: %s\nVersion: %s\n", method, 
 				    uri, version);
@@ -133,44 +135,98 @@ main(int argc, char **argv)
 			
 			if (verbose)
 				printf("host_name: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
+		}
 
+		// Print statements like proxyref
+		printf("Request %u: Received request from %s (%s)\n", 
+			number_Requests, host_name, haddrp);
+		printf("%s %s %s\n", method, uri, version);
+		printf("\n*** End of Request ***\n\n");
+		
+		request = strcat(method, " ");
+		request = strcat(request, path_name);
+		request = strcat(request, " ");
+		request = strcat(request, version);
+		request = strcat(request, "\r\n");
 
-			// Print statements like proxyref
-			printf("Request %u: Received request from %s (%s)\n", 
-				number_Requests, host_name, haddrp);
-			printf("%s %s %s\n", method, uri, version);
-			printf("\n*** End of Request ***\n\n");
-			
-			request = strcat(method, " ");
-			request = strcat(request, path_name);
-			request = strcat(request, " ");
-			request = strcat(request, version);
+		/* 
+		* open connection to server read request into server, 
+		* making sure to use parsed pathname, not full url
+		*/
+
+		if ((conn_to_serverfd = Open_clientfd_ts(host_name,
+		    port)) < 0) {
+		    Close(conn_to_clientfd);
+		    continue;
+		}
+		
+		Rio_readinitb(&server_rio, conn_to_serverfd);
+		Rio_writen_w(conn_to_serverfd, request, strlen(request));
+		
+		if (verbose)
+			printf("Wrote request to server: %s\n", request);
+		
+		if (strstr(version, "1.1") != NULL) {
+			char host_header[MAXLINE] = "Host: ";
+			request = strcat(host_header, host_name);
 			request = strcat(request, "\r\n");
-
-			/* 
-			* open connection to server read request into server, 
-			* making sure to use parsed pathname, not full url
-			*/
-
-			if ((conn_to_serverfd = Open_clientfd_ts(host_name,
-			    port)) < 0) {
-			    Close(conn_to_clientfd);
-			    continue;
-			}
-			
-			Rio_readinitb(&server_rio, conn_to_serverfd);
-			Rio_writen_w(conn_to_serverfd, request, strlen(request));
 			
 			if (verbose)
-				printf("Wrote request to server: %s\n", request);
+				printf("HTTP 1.1 host header: %s\n", request);
 			
-			if (strstr(version, "1.1") != NULL) {
-				char host_header[MAXLINE] = "Host: ";
-				request = strcat(host_header, host_name);
-				request = strcat(request, "\r\n");
+			Rio_writen_w(conn_to_serverfd, request, 
+			    strlen(request));
+		}
+		
+		//if HTTP/1.1, it requires a host header Host: host_name
+		//[TODO] Strip Proxy-Connection and Connection headers
+		// out of the request, add in Connection: close if using 
+		// HTTP/1.1
+		
+		printf("Connection header: %s\n", connection_hdr);
+		
+		while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
+		    MAXLINE)) > 0) {
+		    // num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
+		
+			printf("strstr result: %s\n", strstr("Connection", buf));	
+			// Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
+			if (strstr(buf, "Connection: ") != NULL) {
+				Rio_writen_w(conn_to_serverfd, 
+				    connection_hdr, strlen(buf));
+				    //printf("Writing connection closed.\n");
+				    if (verbose)
+				printf("Writing request header to server: %s\n", connection_hdr);
+			}
+			else { 
+				Rio_writen_w(conn_to_serverfd, buf,
+				    strlen(buf));
+				    if (verbose)
+				printf("Writing request header to server: %s\n", buf);
+			}
+		
+			if (strcmp(buf, "\r\n") == 0)
+				break;
+		}
+		
+		// Print statements like proxyref
+		printf("Request %u: Forwarding request to end server\n", 
+			number_Requests);
+		printf("%.14s\n", method);
+		printf("Connection: close\n");
+		printf("\n*** End of Request ***\n\n");
+
+		if (verbose)
+			printf("Preparing to read reply to client\n");
+	
+		//receive reply and forward it to browser
+		//while(read != 0) increment num_bytes during this
+		while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
+		    MAXLINE)) > 0) {
+				num_bytes += cur_bytes;
 				
 				if (verbose)
-					printf("HTTP 1.1 host header: %s\n", request);
+					printf("Read response: %s\n", buf);
 				
 				Rio_writen_w(conn_to_serverfd, request, 
 				    strlen(request));
@@ -189,40 +245,15 @@ main(int argc, char **argv)
 				
 				// Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
 				Rio_writen_w(conn_to_serverfd, buf, strlen(buf));
-			
+
 				if (strcmp(buf, "\r\n") == 0)
 					break;
-			}
-			
-			// Print statements like proxyref
-			printf("Request %u: Forwarding request to end server\n", 
-				number_Requests);
-			printf("%.14s\n", method);
-			printf("Connection: close\n");
-			printf("\n*** End of Request ***\n\n");
-
-			if (verbose)
-				printf("Preparing to read reply to client\n");
-		
-			//receive reply and forward it to browser
-			//while(read != 0) increment num_bytes during this
-			while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
-			    MAXLINE)) > 0) {
-					num_bytes += cur_bytes;
-					
-					if (verbose)
-						printf("Read response: %s\n", buf);
-					
-					Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
-					if (strcmp(buf, "\r\n") == 0)
-						break;
-			}
-
-			if (verbose)
-				printf("Closing connection to server\n");
-			
-			Close(conn_to_serverfd);
 		}
+
+		if (verbose)
+			printf("Closing connection to server\n");
+		
+		Close(conn_to_serverfd);
 
 		if (verbose)
 			printf("Writing log to file\n");
@@ -414,7 +445,7 @@ parse_uri(char *uri, char *hostname, char *pathname, int *port)
 	int len, i, j;
 	char *hostbegin;
 	char *hostend;
-	
+	uri = strcat(uri, " ");
 	if (strncasecmp(uri, "http://", 7) != 0) {
 		hostname[0] = '\0';
 		return (-1);
