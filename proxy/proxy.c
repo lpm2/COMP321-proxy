@@ -165,7 +165,7 @@ main(int argc, char **argv)
 				printf("Wrote request to server: %s\n", request);
 			
 			if (strstr(version, "1.1") != NULL) {
-				char host_header[7] = "Host: ";
+				char host_header[MAXLINE] = "Host: ";
 				request = strcat(host_header, host_name);
 				request = strcat(request, "\r\n");
 				
@@ -212,15 +212,17 @@ main(int argc, char **argv)
 					
 					if (verbose)
 						printf("Read response: %s\n", buf);
-
+					
 					Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
-				}
+					if (strcmp(buf, "\r\n") == 0)
+						break;
+			}
 
 			if (verbose)
 				printf("Closing connection to server\n");
 			
 			Close(conn_to_serverfd);
-			}
+		}
 
 		// Print statements like proxyref
 		printf("Request %u: Forwarded %d bytes from end server to client\n", 
