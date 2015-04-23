@@ -62,7 +62,8 @@ main(int argc, char **argv)
         	exit(0);
 	}
 	
-	//[TODO] Handle sigpipe signals
+	// Handle sigpipe signals
+	Signal(SIGPIPE, SIG_IGN);
 	
 	port = atoi(argv[1]);
 	listenfd = Open_listenfd(port);
@@ -94,6 +95,7 @@ main(int argc, char **argv)
 			printf("Buf: %s\n", buf);
 		}
 		
+<<<<<<< HEAD
 		if (sscanf(buf, "%s %s %s", method, uri, version) <= 0) {
 			printf("Error with sscanf\n");
 			Close(conn_to_clientfd);
@@ -104,6 +106,24 @@ main(int argc, char **argv)
 			printf("Parsed request line\n");
 			printf("Method: %s\nURI: %s\nVersion: %s\n", method, 
 			    uri, version);
+=======
+		sscanf(buf, "%s %s %s", method, uri, version);
+
+		if (!strstr(buf, "GET")) {
+			printf("Error! Expected GET request; any other unsupported.\n");
+			Free(path_name);
+			Close(conn_to_clientfd);
+			continue;
+		}		
+		else {
+			if (verbose) {
+				printf("Parsed request line\n");
+				printf("Method: %s\nURI: %s\nVersion: %s\n", method, 
+				    uri, version);
+				printf("method: %s GET: %s\n", method, GET);
+				printf("Is get? %d\n", strcmp(method, GET));
+			}
+>>>>>>> bf840e46afb6ee8096bedc9e56a3a13bd1c349b3
 		}
 		
 		//Check whether a GET request was sent
@@ -121,7 +141,26 @@ main(int argc, char **argv)
 			}
 			
 			if (verbose)
+<<<<<<< HEAD
 				printf("host_name: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
+=======
+				printf("hostname: %s\npath_name: %s\nport: %d\n", 
+					host_name, path_name, port);
+			
+			// determine the domain name and IP address of the client
+			error = getnameinfo((struct sockaddr *)&clientaddr,
+			    sizeof(clientaddr), host_name, sizeof(host_name), 
+			    NULL,0, 0);
+
+			if (error != 0) {
+				fprintf(stderr, "ERROR: %s\n", gai_strerror(error));
+				Close(conn_to_clientfd);
+				continue;
+			}
+
+			inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, 
+			    INET_ADDRSTRLEN);
+>>>>>>> bf840e46afb6ee8096bedc9e56a3a13bd1c349b3
 
 			// Print statements like proxyref
 			printf("Request %u: Received request from %s (%s)\n", 
@@ -135,16 +174,22 @@ main(int argc, char **argv)
 			request = strcat(request, version);
 			request = strcat(request, "\r\n");
 			
+<<<<<<< HEAD
 			//open connection to server
 			//read request into server, making sure
 			//to use parsed pathname, not full url
 			printf("Host name: %s\n", host_name);
+=======
+			/* 
+			* open connection to server read request into server, making sure
+			* to use parsed pathname, not full url
+			*/
+>>>>>>> bf840e46afb6ee8096bedc9e56a3a13bd1c349b3
 			if ((conn_to_serverfd = Open_clientfd_ts(host_name,
 			    port)) < 0) {
 			    Close(conn_to_clientfd);
 			    continue;
 			}
-			
 			
 			Rio_readinitb(&server_rio, conn_to_serverfd);
 			Rio_writen_w(conn_to_serverfd, request, strlen(request));
@@ -175,10 +220,11 @@ main(int argc, char **argv)
 		    	if (verbose)
 		    		printf("Writing request header to server: %s\n", buf);
 				
-				Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
+				// Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
+				Rio_writen_w(conn_to_serverfd, buf, strlen(buf));
 			
 				if (strcmp(buf, "\r\n") == 0)
-				break;
+					break;
 			}
 			
 			// Print statements like proxyref
