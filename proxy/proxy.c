@@ -112,13 +112,13 @@ main(int argc, char **argv)
 				printf("Parsed request line\n");
 				printf("Method: %s\nURI: %s\nVersion: %s\n", method, 
 				    uri, version);
-				printf("method: %s GET: %s\n", method, GET);
+				//printf("method: %s GET: %s\n", method, GET);
 				printf("Is get? %d\n", strcmp(method, GET));
 			}
 		}
 		
 		//Check whether a GET request was sent
-		if (strcasecmp(method, GET) == 0) {
+		if (strcasecmp(method, GET) == 0) {	
 			//request = temp;
 			//request = strcpy(request, uri);
 			//request = strcat(request, " ");
@@ -182,7 +182,7 @@ main(int argc, char **argv)
 			// HTTP/1.1
 			while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
 			    MAXLINE)) > 0) {
-			    // num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
+			    num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
 		    	
 		    	if (verbose)
 		    		printf("Writing request header to server: %s\n", buf);
@@ -224,15 +224,6 @@ main(int argc, char **argv)
 			Close(conn_to_serverfd);
 		}
 
-		// Print statements like proxyref
-		printf("Request %u: Forwarded %d bytes from end server to client\n", 
-			number_Requests, num_bytes);
-
-		if (verbose)
-			printf("Closing connection to client\n");
-		
-		Close(conn_to_clientfd);
-
 		if (verbose)
 			printf("Writing log to file\n");
 		
@@ -241,6 +232,14 @@ main(int argc, char **argv)
 
 		if (verbose)
 			printf("Finished writing log\n");
+
+		// Print statements like proxyref
+		printf("Request %u: Forwarded %d bytes from end server to client\n", 
+			number_Requests, num_bytes);		
+
+		if (verbose)
+			printf("Closing connection to client\n");		
+		Close(conn_to_clientfd);
 
 		number_Requests += 1; // iterate request count
 	}	
