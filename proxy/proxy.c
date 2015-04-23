@@ -74,22 +74,22 @@ main(int argc, char **argv)
 		num_bytes = 0;
 		cur_bytes = 0;
 
-		clientlen = sizeof(clientaddr);
+		clientlen = sizeof(clientaddr); //
 		
 		if (verbose)
 			printf("Waiting for connection\n");
 		
-		conn_to_clientfd = Accept(listenfd, (SA *) &clientaddr, &clientlen);
+		conn_to_clientfd = Accept(listenfd, (SA *) &clientaddr, &clientlen); //
 		
 		if (verbose)
 			printf("Connection made\n");
 		
-		Rio_readinitb(&client_rio, conn_to_clientfd);
+		Rio_readinitb(&client_rio, conn_to_clientfd); //
 		
 		if (verbose)
 			printf("Initialized rio stream\n");
 		
-		Rio_readlineb_w(&client_rio, buf, MAXLINE);
+		Rio_readlineb_w(&client_rio, buf, MAXLINE); //
 		
 		if (verbose) {
 			printf("Read in request line\n");
@@ -110,17 +110,15 @@ main(int argc, char **argv)
 		}		
 		else {
 			if (verbose) {
-				printf("GET request received\n");
+				printf("Success: GET request received\n");
 				printf("Parsed request line\n");
 				printf("Method: %s\nURI: %s\nVersion: %s\n", method, 
 				    uri, version);
-				//printf("method: %s GET: %s\n", method, GET);
-				printf("Is get? %d\n", strcmp(method, GET));
 			}
-		}
+		} // end strstr 
 		
 		if (parse_uri(uri, host_name, path_name, &port) < 0) {
-			printf("Error parsing URI!\n");
+			printf("Error! parsing URI failed\n");
 			Close(conn_to_clientfd);
 			continue;
 		}
