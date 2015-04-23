@@ -97,7 +97,7 @@ main(int argc, char **argv)
 		sscanf(buf, "%s %s %s", method, uri, version);
 
 		if (!strstr(buf, "GET")) {
-			printf("Error! Received non-GET request!\n");
+			printf("Error! Expected GET request; any other unsupported.\n");
 			Free(path_name);
 			Close(conn_to_clientfd);
 			continue;
@@ -129,9 +129,7 @@ main(int argc, char **argv)
 				printf("hostname: %s\npath_name: %s\nport: %d\n", 
 					host_name, path_name, port);
 			
-			/* determine the domain name and IP address of the 
-			 * client
-			 */
+			// determine the domain name and IP address of the client
 			error = getnameinfo((struct sockaddr *)&clientaddr,
 			    sizeof(clientaddr), host_name, sizeof(host_name), 
 			    NULL,0, 0);
@@ -157,16 +155,15 @@ main(int argc, char **argv)
 			request = strcat(request, version);
 			request = strcat(request, "\r\n");
 			
-			//open connection to server
-			//read request into server, making sure
-			//to use parsed pathname, not full url
-			
+			/* 
+			* open connection to server read request into server, making sure
+			* to use parsed pathname, not full url
+			*/
 			if ((conn_to_serverfd = Open_clientfd_ts(host_name,
 			    port)) < 0) {
 			    Close(conn_to_clientfd);
 			    continue;
 			}
-			
 			
 			Rio_readinitb(&server_rio, conn_to_serverfd);
 			Rio_writen_w(conn_to_serverfd, request, strlen(request));
@@ -197,7 +194,8 @@ main(int argc, char **argv)
 		    	if (verbose)
 		    		printf("Writing request header to server: %s\n", buf);
 				
-				Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
+				// Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
+				Rio_writen_w(conn_to_serverfd, buf, strlen(buf));
 			
 				if (strcmp(buf, "\r\n") == 0)
 					break;
