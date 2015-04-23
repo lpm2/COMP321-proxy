@@ -125,7 +125,8 @@ main(int argc, char **argv)
 			
 		if (verbose)
 			printf("host_name: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
-		inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, INET_ADDRSTRLEN);
+		inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, INET_ADDRSTRLEN); 
+		//inet_ntoa(clientaddr.sin_addr); Can use this instead of haddrp in print below
 
 		// Print statements like proxyref
 		printf("Request %u: Received request from %s (%s)\n", 
