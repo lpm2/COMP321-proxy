@@ -15,6 +15,7 @@
  */
 ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes);
 ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen);
+ssize_t Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n);
 int parse_uri(char *uri, char *hostname, char *pathname, int *port);
 int Open_clientfd_ts(char *hostname, int port);
 int open_clientfd_ts(char *hostname, int port);
@@ -23,14 +24,12 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     char *uri, int size);
 void logging(char *logString, char *fileName);
 void read_requesthdrs(rio_t *rp);
-void doit(int fd); //handle requests
 
 #define SIZEOF_GET 3
 #define SIZEOF_VERSION 8
 unsigned int number_Requests = 0;
-bool verbose = true;
-//static char GET[4] = "GET";
-// static char *connection_hdr = "Connection: close\r\n";
+
+bool verbose = true; // debug prints
 
 /* 
  * main - Main routine for the proxy program 
@@ -44,11 +43,8 @@ main(int argc, char **argv)
 	char buf[MAXLINE], host_name[MAXLINE], logstring[MAXLINE], path_name[MAXLINE], uri[MAXLINE], request[MAXLINE];
 	char version[SIZEOF_VERSION];
 	char method[SIZEOF_GET]; 
-	//char *host_header = "Host: "; //hackish solution to strcat?
-	//int listenfd, port;//, error;
 	int conn_to_clientfd, conn_to_serverfd, listenfd, port;
-	size_t cur_bytes;
-	//the number of bytes read in from a single read
+	size_t cur_bytes; //the number of bytes read in from a single read
 	unsigned int num_bytes;	//the number of bytes returned in the server response
 	
 	if (argc != 2) {
@@ -57,7 +53,7 @@ main(int argc, char **argv)
 	}
 	
 	// Handle sigpipe signals
-	Signal(SIGPIPE, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
 	
 	port = atoi(argv[1]);
 	listenfd = Open_listenfd(port);
@@ -130,7 +126,8 @@ main(int argc, char **argv)
 		
 		Rio_readinitb(&server_rio, conn_to_serverfd);
 
-		/*		
+		// Concatenate requests
+		/* 	
 		request = strcat(method, " ");
 		request = strcat(request, path_name);
 		request = strcat(request, " ");
@@ -175,11 +172,10 @@ main(int argc, char **argv)
 			if (verbose)
 				printf("%s", buf);
     	}*/		
-
 		
 		while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
 		    MAXLINE)) > 0) {
-		    // num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
+		    // num_bytes += cur_bytes;
 		
 			// // Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
 			// if (strstr(buf, "Connection: ")) {
@@ -200,10 +196,10 @@ main(int argc, char **argv)
 		
 			if (strcmp(buf, "\r\n") == 0) {
 				//Rio_writen_w(conn_to_clientfd, buf, //strlen(buf));
+
 				break;
 			}
 		}
-		
 		
 		// Print statements like proxyref
 		printf("Request %u: Forwarding request to end server\n", 
@@ -217,31 +213,34 @@ main(int argc, char **argv)
 		//receive reply and forward it to browser
 		//while(read != 0) increment num_bytes during this
 		//int flag = 0;
-		int content_len = 0;
-		char dontcare[MAXLINE];
+		// int content_len = 0;
+		// char dontcare[MAXLINE];
 
 		// Read in response headers
+		
+		
 		while(strcmp(buf, "\r\n")) {
 			
-			if (strstr(buf, "Content-length:") != NULL) {
-				printf("Scanning for content length\n");
-				sscanf(buf, "%s %d", dontcare, &content_len);
-				printf("Header: %s\nLength: %d\n", dontcare, content_len);
-			}
+			// if (strstr(buf, "Content-length:") != NULL) {
+			// 	printf("Scanning for content length\n");
+			// 	sscanf(buf, "%s %d", dontcare, &content_len);
+			// 	printf("Header: %s\nLength: %d\n", dontcare, content_len);
+			// }
 			
-			if (verbose)
-				printf("%s", buf);
+			// if (verbose)
+			// 	printf("%s", buf);
 
 			Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
-    		}
+    	}
     		
-    		// Read in response content
-    		while ((cur_bytes = Rio_readn_w(conn_to_serverfd, buf, MAXLINE))
-    		    > 0) {
-    			num_bytes += cur_bytes;
-    			Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
-    			// Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
-    		}
+  //   		// Read in response content
+  //   		while ((cur_bytes = Rio_readn_w(conn_to_serverfd, buf, MAXLINE))
+  //   		    > 0) {
+  //   			num_bytes += cur_bytes;
+  //   			Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
+  //   			// Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
+  //   	}
+    	
 
 		/*
 		while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
@@ -255,42 +254,60 @@ main(int argc, char **argv)
 				    strlen(request));
 		}
 			
-			while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
+			while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
 			    MAXLINE)) > 0) {
-			    num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
+			    num_bytes += cur_bytes;
 		    	
 		    	if (verbose)
 		    		printf("Writing request header to server: %s\n", buf);
 				
 				// Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
-				Rio_writen_w(conn_to_serverfd, buf, strlen(buf));
+				Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
 
 				if (strcmp(buf, "\r\n") == 0)
 					break;
 		}
 		*/
 
+		// while ((cur_bytes = Rio_readlineb_w(&server_rio, buf, MAXLINE)) != 0) {
+		// 	num_bytes += cur_bytes;
+		// 	printf("%s", buf);
+		// 	Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
+
+		// 	if (buf[0] == 13) {
+		// 		num_bytes += cur_bytes;
+		// 		break;
+		// 	}
+		// }
+
+		// Read in response content
+		while ((cur_bytes = Rio_readn_w(conn_to_serverfd, buf, MAXLINE))
+		    > 0) {
+			num_bytes += cur_bytes;
+			Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
+			// Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
+		}
+
 		if (verbose)
-			printf("Closing connection to server\n");
-		
-		Close(conn_to_serverfd);
+			printf("Closing connection to client\n");		
+		Close(conn_to_clientfd);
 
 		if (verbose)
 			printf("Writing log to file\n");
 		
-		format_log_entry(logstring, &clientaddr, uri, num_bytes); // [TODO] This is very slow
+		format_log_entry(logstring, &clientaddr, uri, num_bytes); 
 		logging(logstring, "proxy.log");
 
 		if (verbose)
 			printf("Finished writing log\n");
 
+		if (verbose)
+			printf("Closing connection to server\n");
+		Close(conn_to_serverfd);		
+
 		// Print statements like proxyref
 		printf("Request %u: Forwarded %d bytes from end server to client\n", 
-			number_Requests, num_bytes);		
-
-		if (verbose)
-			printf("Closing connection to client\n");		
-		Close(conn_to_clientfd);
+			number_Requests, num_bytes);
 
 		number_Requests += 1; // iterate request count
 	}	
@@ -303,15 +320,6 @@ main(int argc, char **argv)
 /******************************** 
  * Client/server helper functions
  ********************************/
-/*
- *
- *
-*/
-void
-doit (int fd)
-{
-	fd = (int)fd;
-}
 
 /*
  * logging - Make log entries
@@ -373,7 +381,6 @@ int open_clientfd_ts(char *hostname, int port)
 }
 /* $end open_clientfd */
 
-
 /*
  *
  *
@@ -397,7 +404,7 @@ read_requesthdrs(rio_t *rp)
  * Wrappers for robust I/O routines
  **********************************/
 /*
- *
+ * Thread safe version of open_clientfd
  */
 int
 Open_clientfd_ts(char *hostname, int port) 
@@ -415,7 +422,7 @@ Open_clientfd_ts(char *hostname, int port)
 }
 
 /*
- *
+ * Thread safe version of rio_readn
  */
 ssize_t
 Rio_readn_w(int fd, void *ptr, size_t nbytes) 
@@ -430,7 +437,22 @@ Rio_readn_w(int fd, void *ptr, size_t nbytes)
 }
 
 /*
- *
+ * Thread safe version of rio_readnb
+ */
+ssize_t 
+Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n) 
+{
+    ssize_t rc;
+
+    if ((rc = rio_readnb(rp, usrbuf, n)) < 0)
+		fprintf(stdout, "Error! Failed to read response: %s\n", 
+			strerror(errno));
+		return 0;
+    return rc;
+}
+
+/*
+ * Thread safe version of rio_writen
  */
 void 
 Rio_writen_w(int fd, void *usrbuf, size_t n)
@@ -441,7 +463,7 @@ Rio_writen_w(int fd, void *usrbuf, size_t n)
 }
 
 /*
- *
+ * Thread safe version of rio_readlineb
  */
 ssize_t
 Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen)
