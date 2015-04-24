@@ -28,9 +28,8 @@ void read_requesthdrs(rio_t *rp);
 #define SIZEOF_GET 3
 #define SIZEOF_VERSION 8
 unsigned int number_Requests = 0;
-bool verbose = true;
-//static char GET[4] = "GET";
-// static char *connection_hdr = "Connection: close\r\n";
+
+bool verbose = true; // debug prints
 
 /* 
  * main - Main routine for the proxy program 
@@ -44,11 +43,8 @@ main(int argc, char **argv)
 	char buf[MAXLINE], host_name[MAXLINE], logstring[MAXLINE], path_name[MAXLINE], uri[MAXLINE], request[MAXLINE];
 	char version[SIZEOF_VERSION];
 	char method[SIZEOF_GET]; 
-	//char *host_header = "Host: "; //hackish solution to strcat?
-	//int listenfd, port;//, error;
 	int conn_to_clientfd, conn_to_serverfd, listenfd, port;
-	size_t cur_bytes;
-	//the number of bytes read in from a single read
+	size_t cur_bytes; //the number of bytes read in from a single read
 	unsigned int num_bytes;	//the number of bytes returned in the server response
 	
 	if (argc != 2) {
@@ -130,7 +126,8 @@ main(int argc, char **argv)
 		
 		Rio_readinitb(&server_rio, conn_to_serverfd);
 
-		/*		
+		// Concatenate requests
+		/* 	
 		request = strcat(method, " ");
 		request = strcat(request, path_name);
 		request = strcat(request, " ");
@@ -179,7 +176,7 @@ main(int argc, char **argv)
 		
 		while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
 		    MAXLINE)) > 0) {
-		    // num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
+		    // num_bytes += cur_bytes;
 		
 			// // Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
 			// if (strstr(buf, "Connection: ")) {
@@ -260,7 +257,7 @@ main(int argc, char **argv)
 			
 			while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
 			    MAXLINE)) > 0) {
-			    num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
+			    num_bytes += cur_bytes;
 		    	
 		    	if (verbose)
 		    		printf("Writing request header to server: %s\n", buf);
@@ -300,7 +297,7 @@ main(int argc, char **argv)
 		if (verbose)
 			printf("Writing log to file\n");
 		
-		format_log_entry(logstring, &clientaddr, uri, num_bytes); // [TODO] This is very slow
+		format_log_entry(logstring, &clientaddr, uri, num_bytes); 
 		logging(logstring, "proxy.log");
 
 		if (verbose)
