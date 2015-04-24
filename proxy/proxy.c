@@ -13,17 +13,21 @@
 /*
  * Function prototypes
  */
+/* Robust I/O Wrapper functions*/
 ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes);
 ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen);
 ssize_t Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n);
-int parse_uri(char *uri, char *hostname, char *pathname, int *port);
+void Rio_writen_w(int fd, void *usrbuf, size_t n);
+
+
+/* Thread-safe */
 int Open_clientfd_ts(char *hostname, int port);
 int open_clientfd_ts(char *hostname, int port);
-void Rio_writen_w(int fd, void *usrbuf, size_t n);
+
+int parse_uri(char *uri, char *hostname, char *pathname, int *port);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     char *uri, int size);
 void logging(char *logString, char *fileName);
-void read_requesthdrs(rio_t *rp);
 
 #define SIZEOF_GET 3
 #define SIZEOF_VERSION 8
@@ -43,7 +47,9 @@ main(int argc, char **argv)
 	size_t cur_bytes; //the number of bytes read in from a single read
 	int conn_to_clientfd, conn_to_serverfd, listenfd, port;
 	unsigned int num_bytes;	//the number of bytes returned in the server response
-	char buf[MAXLINE], host_name[MAXLINE], logstring[MAXLINE], path_name[MAXLINE], uri[MAXLINE], request[MAXLINE];
+	/* Strings to store the various fields of our requests */
+	char buf[MAXLINE], host_name[MAXLINE], logstring[MAXLINE];	
+	char path_name[MAXLINE], uri[MAXLINE], request[MAXLINE];
 	char version[SIZEOF_VERSION];
 	char method[SIZEOF_GET]; 
 	
@@ -135,7 +141,7 @@ main(int argc, char **argv)
 		*/
 
 		sprintf(request, "%s %s %s\n", method, path_name, version);
-		strcat(request, "Connection: close\n");
+		strcat(request, "Connection: close\r\n");
 
 		Rio_writen_w(conn_to_serverfd, request, strlen(request));
 		
@@ -380,24 +386,6 @@ int open_clientfd_ts(char *hostname, int port)
 }
 /* $end open_clientfd */
 
-/*
- *
- *
- *
- * read_requesthdrs - read and parse HTTP request headers
- */
-void
-read_requesthdrs(rio_t *rp) 
-{
-    char buf[MAXLINE];
-
-    Rio_readlineb(rp, buf, MAXLINE);
-    while(strcmp(buf, "\r\n")) {
-	Rio_readlineb(rp, buf, MAXLINE);
-	printf("%s", buf);
-    }
-    return;
-}
 
 /**********************************
  * Wrappers for robust I/O routines
