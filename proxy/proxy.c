@@ -199,7 +199,7 @@ main(int argc, char **argv)
 			Rio_writen_w(conn_to_serverfd, buf, strlen(buf));
 		
 			if (strcmp(buf, "\r\n") == 0) {
-				// Rio_writen_w(conn_to_serverfd, buf, strlen(buf));
+				Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
 				break;
 			}
 		}
