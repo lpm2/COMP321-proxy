@@ -24,7 +24,6 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     char *uri, int size);
 void logging(char *logString, char *fileName);
 void read_requesthdrs(rio_t *rp);
-void doit(int fd); //handle requests
 
 #define SIZEOF_GET 3
 #define SIZEOF_VERSION 8
@@ -326,15 +325,6 @@ main(int argc, char **argv)
 /******************************** 
  * Client/server helper functions
  ********************************/
-/*
- *
- *
-*/
-void
-doit (int fd)
-{
-	fd = (int)fd;
-}
 
 /*
  * logging - Make log entries
@@ -420,7 +410,7 @@ read_requesthdrs(rio_t *rp)
  * Wrappers for robust I/O routines
  **********************************/
 /*
- *
+ * Thread safe version of open_clientfd
  */
 int
 Open_clientfd_ts(char *hostname, int port) 
@@ -438,7 +428,7 @@ Open_clientfd_ts(char *hostname, int port)
 }
 
 /*
- *
+ * Thread safe version of rio_readn
  */
 ssize_t
 Rio_readn_w(int fd, void *ptr, size_t nbytes) 
@@ -453,7 +443,7 @@ Rio_readn_w(int fd, void *ptr, size_t nbytes)
 }
 
 /*
- *
+ * Thread safe version of rio_readnb
  */
 ssize_t 
 Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n) 
@@ -468,7 +458,7 @@ Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n)
 }
 
 /*
- *
+ * Thread safe version of rio_writen
  */
 void 
 Rio_writen_w(int fd, void *usrbuf, size_t n)
@@ -479,7 +469,7 @@ Rio_writen_w(int fd, void *usrbuf, size_t n)
 }
 
 /*
- *
+ * Thread safe version of rio_readlineb
  */
 ssize_t
 Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen)
