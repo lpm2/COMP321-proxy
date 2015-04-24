@@ -40,20 +40,19 @@ main(int argc, char **argv)
 	socklen_t clientlen;
 	struct sockaddr_in clientaddr;
 	rio_t client_rio, server_rio;
+	size_t cur_bytes; //the number of bytes read in from a single read
+	int conn_to_clientfd, conn_to_serverfd, listenfd, port;
+	unsigned int num_bytes;	//the number of bytes returned in the server response
 	char buf[MAXLINE], host_name[MAXLINE], logstring[MAXLINE], path_name[MAXLINE], uri[MAXLINE], request[MAXLINE];
 	char version[SIZEOF_VERSION];
 	char method[SIZEOF_GET]; 
-	int conn_to_clientfd, conn_to_serverfd, listenfd, port;
-	size_t cur_bytes; //the number of bytes read in from a single read
-	unsigned int num_bytes;	//the number of bytes returned in the server response
 	
 	if (argc != 2) {
         	fprintf(stderr, "usage: %s <port>\n", argv[0]);
         	exit(0);
 	}
 	
-	// Handle sigpipe signals
-	signal(SIGPIPE, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN); // Handle sigpipe signals
 	
 	port = atoi(argv[1]);
 	listenfd = Open_listenfd(port);
