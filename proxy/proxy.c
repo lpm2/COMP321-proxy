@@ -30,7 +30,7 @@ void doit(int fd); //handle requests
 unsigned int number_Requests = 0;
 bool verbose = true;
 //static char GET[4] = "GET";
-static char *connection_hdr = "Connection: close\r\n";
+// static char *connection_hdr = "Connection: close\r\n";
 
 /* 
  * main - Main routine for the proxy program 
@@ -41,10 +41,9 @@ main(int argc, char **argv)
 	socklen_t clientlen;
 	struct sockaddr_in clientaddr;
 	rio_t client_rio, server_rio;
-	char buf[MAXLINE], host_name[MAXLINE], logstring[MAXLINE], path_name[MAXLINE], uri[MAXLINE];
+	char buf[MAXLINE], host_name[MAXLINE], logstring[MAXLINE], path_name[MAXLINE], uri[MAXLINE], request[MAXLINE];
 	char version[SIZEOF_VERSION];
 	char method[SIZEOF_GET]; 
-	char *request;
 	//char *host_header = "Host: "; //hackish solution to strcat?
 	//int listenfd, port;//, error;
 	int conn_to_clientfd, conn_to_serverfd, listenfd, port;
@@ -87,7 +86,7 @@ main(int argc, char **argv)
 			continue;	
 		}
 
-		if (strstr(buf, "GET") == NULL) {
+		if (!strstr(buf, "GET")) {
 			printf("Error! Expected GET request; any other unsupported.\n");
 			Close(conn_to_clientfd);
 			continue;
@@ -101,7 +100,7 @@ main(int argc, char **argv)
 			}
 		} // end strstr 
 		
-		if (parse_uri(uri, host_name, path_name, &port) < 0) {
+		if (parse_uri(&buf[4], host_name, path_name, &port) < 0) {
 			printf("Error! parsing URI failed\n");
 			Close(conn_to_clientfd);
 			continue;
@@ -115,12 +114,6 @@ main(int argc, char **argv)
 			number_Requests, host_name, inet_ntoa(clientaddr.sin_addr));
 		printf("%s %s %s\n", method, uri, version);
 		printf("\n*** End of Request ***\n\n");
-		
-		request = strcat(method, " ");
-		request = strcat(request, path_name);
-		request = strcat(request, " ");
-		request = strcat(request, version);
-		request = strcat(request, "\r\n");
 
 		/* 
 		* open connection to server, read request into server, 
@@ -136,11 +129,24 @@ main(int argc, char **argv)
 		}
 		
 		Rio_readinitb(&server_rio, conn_to_serverfd);
+
+		/*		
+		request = strcat(method, " ");
+		request = strcat(request, path_name);
+		request = strcat(request, " ");
+		request = strcat(request, version);
+		request = strcat(request, "\r\n");
+		*/
+
+		sprintf(request, "%s %s %s\n", method, path_name, version);
+		strcat(request, "Connection: close\n");
+
 		Rio_writen_w(conn_to_serverfd, request, strlen(request));
 		
 		if (verbose)
 			printf("Wrote request to server: %s\n", request);
 		
+		/*
 		if (strstr(version, "1.1") != NULL) {
 			char host_header[MAXLINE] = "Host: ";
 			request = strcat(host_header, host_name);
@@ -152,55 +158,52 @@ main(int argc, char **argv)
 			Rio_writen_w(conn_to_serverfd, request, 
 			    strlen(request));
 		}
+		*/
 		
-		//if HTTP/1.1, it requires a host header Host: host_name
-		//[TODO] Strip Proxy-Connection and Connection headers
-		// out of the request, add in Connection: close if using 
-		// HTTP/1.1
-		
-		while (strcmp(buf, "\r\n")) {
+/*		while (strcmp(buf, "\r\n")) {
 			
 			Rio_readlineb(&client_rio, buf, MAXLINE);
 			Rio_writen_w(conn_to_serverfd, buf, strlen(buf));
 			
-			if (strstr(buf, "Connection: ") != NULL)
-				Rio_writen_w(conn_to_serverfd, 
-				    connection_hdr, strlen(connection_hdr));
-			else
-				Rio_writen_w(conn_to_serverfd, 
+			// if (strstr(buf, "Connection: ") != NULL)
+			// 	Rio_writen_w(conn_to_serverfd, 
+			// 	    connection_hdr, strlen(connection_hdr));
+			// else
+				Rio_writen_w(conn_to_clientfd, 
 				    buf, strlen(buf));
 			
 			if (verbose)
 				printf("%s", buf);
-    	}		
+    	}*/		
 
-		/*
+		
 		while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
 		    MAXLINE)) > 0) {
 		    // num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
 		
-			// Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
-			if (strstr(buf, "Connection: ") != NULL) {
-				Rio_writen_w(conn_to_serverfd, 
-				    connection_hdr, strlen(buf));
-				    //printf("Writing connection closed.\n");
-				    if (verbose)
-				printf("Writing request header to server: %s\n", connection_hdr);
-			}
-			else { 
-				Rio_writen_w(conn_to_serverfd, buf,
-				    strlen(buf));
-				    if (verbose)
-				printf("Writing request header to server: %s\n", buf);
-			}
+			// // Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
+			// if (strstr(buf, "Connection: ")) {
+			// 	// Rio_writen_w(conn_to_serverfd, connection_hdr, strlen(buf));
+			// 	//     //printf("Writing connection closed.\n");
+			// 	// if (verbose)
+			// 	// 	printf("Writing request header to server: %s\n", connection_hdr);
+			// 	continue;
+			// }
+			// else { 
+			// 	// Rio_writen_w(conn_to_serverfd, buf, strlen(buf));
+			// 	if (verbose)
+			// 		printf("Writing request header to server: %s\n", buf);
+			// 	continue;
+			// }
+
+			Rio_writen_w(conn_to_serverfd, buf, strlen(buf));
 		
 			if (strcmp(buf, "\r\n") == 0) {
-				Rio_writen_w(conn_to_serverfd, buf,
-				    strlen(buf));
+				// Rio_writen_w(conn_to_serverfd, buf, strlen(buf));
 				break;
 			}
 		}
-		*/
+		
 		
 		// Print statements like proxyref
 		printf("Request %u: Forwarding request to end server\n", 
