@@ -25,8 +25,8 @@ void logging(char *logString, char *fileName);
 void read_requesthdrs(rio_t *rp) ;
 void doit(int fd); //handle requests
 
-#define SIZEOF_GET 3
-#define SIZEOF_VERSION 8
+#define SIZEOF_GET 4
+#define SIZEOF_VERSION 9
 unsigned int number_Requests = 0;
 bool verbose = true;
 //static char GET[4] = "GET";
@@ -38,6 +38,7 @@ static char *connection_hdr = "Connection: close\r\n";
 int
 main(int argc, char **argv)
 {
+	//int i;
 	socklen_t clientlen;
 	struct sockaddr_in clientaddr;
 	rio_t client_rio, server_rio;
@@ -80,27 +81,47 @@ main(int argc, char **argv)
 			printf("Read in request line\n");
 			printf("Buf: %s\n", buf);
 		}
-
+		
+		if (verbose)
+			printf("Method: %s\nURI: %s\nVersion: %s\n", method, uri, version);		
+		/*
+		memcpy(method, &buf[0], 3);
+		method[3] = '\0';
+		int num_spaces = 0;
+		
+		for (i = 0; i < (int)strlen(buf); i++) {
+		
+			if (buf[i] == ' ')
+				num_spaces++;
+			if (num_spaces == 2)
+				break;
+		}
+		
+		memcpy(version, &buf[i+1], strlen(buf)-i);
+		version[8] = '\0';
+		*/
+		
+		
 		if (sscanf(buf, "%s %s %s", method, uri, version) <= 0) {
+			
 			printf("Error with sscanf\n");
 			Close(conn_to_clientfd);
 			continue;	
 		}
+		
 
 		if (strstr(buf, "GET") == NULL) {
 			printf("Error! Expected GET request; any other unsupported.\n");
-			Free(path_name);
 			Close(conn_to_clientfd);
 			continue;
 		}		
 		
 		if (verbose){
-				printf("GET request received\n");
-				printf("Parsed request line\n");
-				printf("Method: %s\nURI: %s\nVersion: %s\n", method, uri, version);
+			printf("GET request received\n");
+			printf("Parsed request line\n");
 		}
 	
-		if (parse_uri(uri, host_name, path_name, &port) < 0) {
+		if (parse_uri(&buf[4], host_name, path_name, &port) < 0) {
 			printf("Error parsing URI!\n");
 			Close(conn_to_clientfd);
 			continue;
@@ -165,41 +186,21 @@ main(int argc, char **argv)
 			Rio_readlineb(&client_rio, buf, MAXLINE);
 			Rio_writen_w(conn_to_serverfd, buf, strlen(buf));
 			
-			if (strstr(buf, "Connection: ") != NULL)
+			if (strstr(buf, "Connection: ") != NULL) {
 				Rio_writen_w(conn_to_serverfd, 
 				    connection_hdr, strlen(connection_hdr));
-			else
+				if (verbose)
+				printf("%s", connection_hdr);    
+				    
+			}
+			else {
 				Rio_writen_w(conn_to_serverfd, 
 				    buf, strlen(buf));
 			
 			if (verbose)
 				printf("%s", buf);
+				}
     		}		
-				
-		/*
-		while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
-		    MAXLINE)) > 0) {
-		    // num_bytes += cur_bytes; // [TODO] Xin "Do we need to add this here?"
-		
-			// Rio_writen_w(conn_to_serverfd, buf, cur_bytes);
-			
-				    //printf("Writing connection closed.\n");
-				    if (verbose)
-				printf("Writing request header to server: %s\n", connection_hdr);
-			}
-			else { 
-				Rio_writen_w(conn_to_serverfd, buf,
-				    strlen(buf));
-				    if (verbose)
-				printf("Writing request header to server: %s\n", buf);
-			}
-		
-			if (strcmp(buf, "\r\n") == 0) {
-				Rio_writen_w(conn_to_serverfd, buf,
-				    strlen(buf));
-				break;
-			}
-		}*/
 		
 		// Print statements like proxyref
 		printf("Request %u: Forwarding request to end server\n", 
@@ -211,65 +212,33 @@ main(int argc, char **argv)
 			printf("Preparing to read reply to client\n");
 		
 		//int flag = 0;
-		int content_len = 0;
-		char dontcare[MAXLINE];
+		//int content_len = 0;
+		//char dontcare[MAXLINE];
 		//receive reply and forward it to browser
 		//while(read != 0) increment num_bytes during this
 		
 		// Read in response headers
-		while(strcmp(buf, "\r\n")) {
+		do {
 			num_bytes += Rio_readlineb(&server_rio, buf, MAXLINE);
 			Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
 			
-			if (strstr(buf, "Content-length:") != NULL) {
+			/*if (strstr(buf, "Content-length:") != NULL) {
 				printf("Scanning for content length\n");
 				sscanf(buf, "%s %d", dontcare, &content_len);
 				printf("Header: %s\nLength: %d\n", dontcare, content_len);
-			}
+			}*/
 			
 			if (verbose)
 				printf("%s", buf);
-    		}
+    		} while(strcmp(buf, "\r\n"));
     		
     		// Read in response content
     		while ((cur_bytes = Rio_readn_w(conn_to_serverfd, buf, MAXLINE))
     		    > 0) {
     			num_bytes += cur_bytes;
-    			Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
+    			Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
     		}
     		
-		/*
-		while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
-		    MAXLINE)) > 0) {
-			num_bytes += cur_bytes;
-				
-			if (verbose)
-				printf("Read response: %s\n", buf);
-			
-
-			
-			Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
-			if (strcmp(buf, "\r\n") == 0) {
-			
-				if (flag == 0)
-					flag++;
-				else {
-					//Rio_writen_w(conn_to_serverfd, buf,
-				    	//    strlen(buf));
-					break;
-				}
-			}
-			
-			if (flag == 1) {
-				printf("Content length = %d\n", content_len);
-				while(content_len > 0) {
-					content_len -= Rio_readn_w(conn_to_serverfd, buf, content_len);
-					Rio_writen_w(conn_to_clientfd, buf, content_len);
-				}
-				//break;
-			}
-			
-		}*/
 
 		if (verbose)
 			printf("Closing connection to server\n");
@@ -475,7 +444,6 @@ parse_uri(char *uri, char *hostname, char *pathname, int *port)
 	int len, i, j;
 	char *hostbegin;
 	char *hostend;
-	uri = strcat(uri, " ");
 	if (strncasecmp(uri, "http://", 7) != 0) {
 		hostname[0] = '\0';
 		return (-1);
