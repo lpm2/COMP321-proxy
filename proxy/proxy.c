@@ -230,7 +230,6 @@ main(int argc, char **argv)
 		*/
 			Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
     	}
-
 		/*
 		while ((cur_bytes = Rio_readn_w(conn_to_serverfd, buf, MAXLINE))
 		    > 0) {
@@ -267,17 +266,18 @@ main(int argc, char **argv)
 		}
 		*/
 
-		// while ((cur_bytes = Rio_readlineb_w(&server_rio, buf, MAXLINE)) != 0) {
-		// 	num_bytes += cur_bytes;
-		// 	printf("%s", buf);
-		// 	Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
+		/*
+		while ((cur_bytes = Rio_readlineb_w(&server_rio, buf, MAXLINE)) != 0) {
+			num_bytes += cur_bytes;
+			printf("%s", buf);
+			Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
 
-		// 	if (buf[0] == 13) {
-		// 		num_bytes += cur_bytes;
-		// 		break;
-		// 	}
-		// }
-
+			if (buf[0] == 13) {
+				num_bytes += cur_bytes;
+				break;
+			}
+		}
+		*/
 		// Read in response content
 		while ((cur_bytes = Rio_readn_w(conn_to_serverfd, buf, MAXLINE))
 		    > 0) {
