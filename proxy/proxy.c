@@ -222,9 +222,7 @@ main(int argc, char **argv)
 		// char dontcare[MAXLINE];
 
 		// Read in response headers
-		
-		
-		while(strcmp(buf, "\r\n")) {
+		while (strcmp(buf, "\r\n")) {
 			
 			// if (strstr(buf, "Content-length:") != NULL) {
 			// 	printf("Scanning for content length\n");
@@ -236,7 +234,7 @@ main(int argc, char **argv)
 			// 	printf("%s", buf);
 
 			Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
-    	}
+    		}
     		
   //   		// Read in response content
   //   		while ((cur_bytes = Rio_readn_w(conn_to_serverfd, buf, MAXLINE))
