@@ -24,6 +24,7 @@ void Rio_writen_w(int fd, void *usrbuf, size_t n);
 int Open_clientfd_ts(char *hostname, int port);
 int open_clientfd_ts(char *hostname, int port);
 
+/* Helper functions */
 int parse_uri(char *uri, char *hostname, char *pathname, int *port);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     char *uri, int size);
@@ -231,14 +232,14 @@ main(int argc, char **argv)
 				
 			Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
     		}
-    		
-  //   		// Read in response content
-  //   		while ((cur_bytes = Rio_readn_w(conn_to_serverfd, buf, MAXLINE))
-  //   		    > 0) {
-  //   			num_bytes += cur_bytes;
-  //   			Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
-  //   			// Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
-  //   	}
+			/*    		
+    		while ((cur_bytes = Rio_readn_w(conn_to_serverfd, buf, MAXLINE))
+    		    > 0) {
+    			num_bytes += cur_bytes;
+    			Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
+    			// Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
+    	}
+		*/
 
 		/*
 		while ((cur_bytes = Rio_readlineb_w(&server_rio, buf,
@@ -279,6 +280,7 @@ main(int argc, char **argv)
 			}
 		}
 		*/
+		
 		// Read in response content
 		while ((cur_bytes = Rio_readn_w(conn_to_serverfd, buf, MAXLINE))
 		    > 0) {
