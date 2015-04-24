@@ -228,7 +228,7 @@ main(int argc, char **argv)
 			
 			if (verbose)
 				printf("%s", buf);
-		*/
+				
 			Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
     		}
     		
