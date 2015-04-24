@@ -172,7 +172,6 @@ main(int argc, char **argv)
 			if (verbose)
 				printf("%s", buf);
     	}*/		
-
 		
 		while ((cur_bytes = Rio_readlineb_w(&client_rio, buf,
 		    MAXLINE)) > 0) {
@@ -200,7 +199,6 @@ main(int argc, char **argv)
 				break;
 			}
 		}
-		
 		
 		// Print statements like proxyref
 		printf("Request %u: Forwarding request to end server\n", 
@@ -269,7 +267,6 @@ main(int argc, char **argv)
 					break;
 		}
 		*/
-
 
 		// while ((cur_bytes = Rio_readlineb_w(&server_rio, buf, MAXLINE)) != 0) {
 		// 	num_bytes += cur_bytes;
@@ -382,7 +379,6 @@ int open_clientfd_ts(char *hostname, int port)
     return clientfd;
 }
 /* $end open_clientfd */
-
 
 /*
  *
