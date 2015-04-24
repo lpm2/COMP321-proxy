@@ -9,6 +9,7 @@
 
 #include <stdbool.h>
 #include "csapp.h"
+#include "sbuf.c"
 
 /*
  * Function prototypes
@@ -30,21 +31,21 @@ void doit(int fd); //handle requests
 unsigned int number_Requests = 0;
 bool verbose = true;
 //static char GET[4] = "GET";
-static char *connection_hdr = "Connection: close\r\n";
+static char connection_hdr[MAXLINE] = "Connection: close\r\n";
 
 /* 
  * main - Main routine for the proxy program 
  */
 int
 main(int argc, char **argv)
-{
+{	
 	//int i;
 	socklen_t clientlen;
 	struct sockaddr_in clientaddr;
 	rio_t client_rio, server_rio;
 	char buf[MAXLINE], host_name[MAXLINE], logstring[MAXLINE];
 	char path_name[MAXLINE], uri[MAXLINE];
-	char haddrp[INET_ADDRSTRLEN];
+	char haddrp[INET_ADDRsizeof];
 	char version[SIZEOF_VERSION];
 	char method[SIZEOF_GET]; 
 	char *request;
@@ -77,30 +78,24 @@ main(int argc, char **argv)
 		Rio_readinitb(&client_rio, conn_to_clientfd);
 		Rio_readlineb_w(&client_rio, buf, MAXLINE);
 		
-		if (verbose) {
-			printf("Read in request line\n");
-			printf("Buf: %s\n", buf);
-		}
-		
 		if (verbose)
-			printf("Method: %s\nURI: %s\nVersion: %s\n", method, uri, version);		
-		/*
-		memcpy(method, &buf[0], 3);
+			printf("Request line: %s\n", buf);
+		
+		
+		/*memcpy(method, &buf[0], 3);
 		method[3] = '\0';
-		int num_spaces = 0;
+		//int space_index = 0;
+		i = 4;
+		do {
+			uri[i-4] = buf[i];
+			i++;
+		} while(buf[i] != ' ');
 		
-		for (i = 0; i < (int)strlen(buf); i++) {
+		uri[i] = ' ';
+		uri[i+1] = 'a';
 		
-			if (buf[i] == ' ')
-				num_spaces++;
-			if (num_spaces == 2)
-				break;
-		}
-		
-		memcpy(version, &buf[i+1], strlen(buf)-i);
-		version[8] = '\0';
-		*/
-		
+		memcpy(version, &buf[sizeof(buf)-10], sizeof(buf));
+		version[8] = '\0'; */
 		
 		if (sscanf(buf, "%s %s %s", method, uri, version) <= 0) {
 			
@@ -109,17 +104,14 @@ main(int argc, char **argv)
 			continue;	
 		}
 		
-
+		if (verbose)
+			printf("Method: %s\nURI: %s\nVersion: %s\n", method, uri, version);		
+		
 		if (strstr(buf, "GET") == NULL) {
 			printf("Error! Expected GET request; any other unsupported.\n");
 			Close(conn_to_clientfd);
 			continue;
 		}		
-		
-		if (verbose){
-			printf("GET request received\n");
-			printf("Parsed request line\n");
-		}
 	
 		if (parse_uri(&buf[4], host_name, path_name, &port) < 0) {
 			printf("Error parsing URI!\n");
@@ -130,7 +122,7 @@ main(int argc, char **argv)
 		if (verbose)
 			printf("host_name: %s\npath_name: %s\nport: %d\n", host_name, path_name, port);
 		inet_ntop(AF_INET, &clientaddr.sin_addr, haddrp, 
-		    INET_ADDRSTRLEN);
+		    INET_ADDRsizeof);
 
 		// Print statements like proxyref
 		printf("Request %u: Received request from %s (%s)\n", 
@@ -138,11 +130,17 @@ main(int argc, char **argv)
 		printf("%s %s %s\n", method, uri, version);
 		printf("\n*** End of Request ***\n\n");
 		
-		request = strcat(method, " ");
-		request = strcat(request, path_name);
-		request = strcat(request, " ");
-		request = strcat(request, version);
-		request = strcat(request, "\r\n");
+		
+		if (strcasecmp(version, "HTTP/1.1") == 0) {
+			request = strcat(method, " ");
+			request = strncat(request, path_name, sizeof(path_name));
+			request = strcat(request, " ");
+			request = strncat(request, version, sizeof(version));
+			request = strcat(request, "\r\n");
+		} else
+			strncpy(request, buf, sizeof(buf));
+		
+		printf("*****Earlier request*****\n%s", request);
 
 		/* 
 		* open connection to server, read request into server, 
@@ -151,56 +149,53 @@ main(int argc, char **argv)
 		if (verbose)
 			printf("Opening connection to server with:\nhost_name: %s\nport: %d\n", host_name, port);
 		
-		if ((conn_to_serverfd = Open_clientfd_ts(host_name,
-		    port)) < 0) {
-		    Close(conn_to_clientfd);
-		    continue;
-		}
 		
-		Rio_readinitb(&server_rio, conn_to_serverfd);
-		Rio_writen_w(conn_to_serverfd, request, strlen(request));
+		
+		//[TODO] add error check
+		Rio_writen_w(conn_to_serverfd, request, sizeof(request));
 		
 		if (verbose)
 			printf("Wrote request to server: %s\n", request);
 		
-		if (strstr(version, "1.1") != NULL) {
-			char host_header[MAXLINE] = "Host: ";
-			request = strcat(host_header, host_name);
-			request = strcat(request, "\r\n");
-			
-			if (verbose)
-				printf("HTTP 1.1 host header: %s\n", request);
+		/*if (strcasecmp(version, "HTTP/1.1") == 0) {
+			//request = strcat(request, "Connection: close\r\n");
 			
 			Rio_writen_w(conn_to_serverfd, request, 
-			    strlen(request));
-		}
+			    sizeof(request));
+			printf("%s", request);
+			
+			
+			printf("%s", connection_hdr);
+		}*/
 		
 		//if HTTP/1.1, it requires a host header Host: host_name
 		//[TODO] Strip Proxy-Connection and Connection headers
 		// out of the request, add in Connection: close if using 
 		// HTTP/1.1
-				
-		//Rio_readlineb(&client_rio, buf, MAXLINE);
+		request = strncat(request, connection_hdr, sizeof(connection_hdr));
     		while(strcmp(buf, "\r\n")) {
 			
 			Rio_readlineb(&client_rio, buf, MAXLINE);
-			Rio_writen_w(conn_to_serverfd, buf, strlen(buf));
 			
-			if (strstr(buf, "Connection: ") != NULL) {
-				Rio_writen_w(conn_to_serverfd, 
-				    connection_hdr, strlen(connection_hdr));
-				if (verbose)
-				printf("%s", connection_hdr);    
-				    
-			}
-			else {
-				Rio_writen_w(conn_to_serverfd, 
-				    buf, strlen(buf));
-			
-			if (verbose)
-				printf("%s", buf);
-				}
-    		}		
+			if (strstr(buf, "Connection: ") != NULL)
+				continue;
+			else
+				request = strncat(request, buf, sizeof(buf));
+    		}
+    		
+    		
+    		printf("Request:\n%s", request);
+    		
+    		if ((conn_to_serverfd = Open_clientfd_ts(host_name,
+		    port)) < 0) {
+		    Close(conn_to_clientfd);
+		    continue;
+		}
+		
+    		Rio_writen_w(conn_to_serverfd, request, sizeof(request));
+    		
+    		
+    		//Rio_writen_w(conn_to_serverfd, buf, sizeof(buf));	
 		
 		// Print statements like proxyref
 		printf("Request %u: Forwarding request to end server\n", 
@@ -218,25 +213,31 @@ main(int argc, char **argv)
 		//while(read != 0) increment num_bytes during this
 		
 		// Read in response headers
-		do {
+		//buf[0] = ' ';
+		
+		Rio_readinitb(&server_rio, conn_to_serverfd);
+		
+		/*while(strcmp(buf, "\r\n")) {
+			printf("Resp headers\n");
 			num_bytes += Rio_readlineb(&server_rio, buf, MAXLINE);
-			Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
+			Rio_writen_w(conn_to_clientfd, buf, sizeof(buf));
 			
-			/*if (strstr(buf, "Content-length:") != NULL) {
+			if (strstr(buf, "Content-length:") != NULL) {
 				printf("Scanning for content length\n");
 				sscanf(buf, "%s %d", dontcare, &content_len);
 				printf("Header: %s\nLength: %d\n", dontcare, content_len);
-			}*/
+			}
 			
 			if (verbose)
 				printf("%s", buf);
-    		} while(strcmp(buf, "\r\n"));
+    		}*/
     		
     		// Read in response content
     		while ((cur_bytes = Rio_readn_w(conn_to_serverfd, buf, MAXLINE))
     		    > 0) {
     			num_bytes += cur_bytes;
-    			Rio_writen_w(conn_to_clientfd, buf, strlen(buf));
+    			printf("%s", buf);
+    			Rio_writen_w(conn_to_clientfd, buf, cur_bytes);
     		}
     		
 
@@ -453,7 +454,7 @@ parse_uri(char *uri, char *hostname, char *pathname, int *port)
 	hostbegin = uri + 7;
 	hostend = strpbrk(hostbegin, " :/\r\n");
 	if (hostend == NULL)
-		hostend = hostbegin + strlen(hostbegin);
+		hostend = hostbegin + sizeof(hostbegin);
 	len = hostend - hostbegin;
 	strncpy(hostname, hostbegin, len);
 	hostname[len] = '\0';
